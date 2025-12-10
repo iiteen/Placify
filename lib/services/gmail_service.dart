@@ -3,6 +3,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 // import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart'; // debugPrint
+import 'dart:convert'; // <-- base64
+import 'package:html/parser.dart' as html_parser;
 
 import '../utils/google_http_client.dart';
 
@@ -84,5 +86,83 @@ class GmailService {
       if (meta != null) results.add(meta);
     }
     return results;
+  }
+
+  /// Fetch FULL message including body, attachments, HTML, etc.
+  Future<String?> getFullMessageBody(String messageId) async {
+    if (_api == null) {
+      debugPrint('Gmail API not initialized. Call signIn() first.');
+      return null;
+    }
+
+    final msg = await _api!.users.messages.get('me', messageId, format: 'full');
+
+    if (msg.payload == null) return null;
+
+    // Decode raw HTML or text
+    final raw = _extractBody(msg.payload!);
+    if (raw == null || raw.trim().isEmpty) return null;
+
+    // Extract ONLY mail-body content using HTML parser
+    return _extractCleanMailBody(raw);
+  }
+
+  /// Recursively extract *raw* HTML/text from Gmail parts
+  String? _extractBody(gmail.MessagePart part) {
+    // CASE 1: Direct body data (Base64)
+    if (part.body != null && part.body!.data != null) {
+      return _decodeBase64(part.body!.data!);
+    }
+
+    // CASE 2: Look inside nested parts
+    if (part.parts != null) {
+      for (var p in part.parts!) {
+        final res = _extractBody(p);
+        if (res != null && res.trim().isNotEmpty) return res;
+      }
+    }
+
+    return null;
+  }
+
+  /// Decode Gmail’s URL-safe Base64
+  String _decodeBase64(String input) {
+    String normalized = input.replaceAll('-', '+').replaceAll('_', '/');
+
+    switch (normalized.length % 4) {
+      case 1:
+        normalized += '===';
+        break;
+      case 2:
+        normalized += '==';
+        break;
+      case 3:
+        normalized += '=';
+        break;
+    }
+
+    return String.fromCharCodes(base64.decode(normalized));
+  }
+
+  /// Extract ONLY content inside <div class="mail-body"> and clean it
+  String _extractCleanMailBody(String html) {
+    final document = html_parser.parse(html);
+
+    // Try to find the main content block
+    final bodyDiv = document.querySelector('.mail-body');
+
+    String cleanedText;
+
+    if (bodyDiv != null) {
+      // extract ONLY mail-body plaintext
+      cleanedText = bodyDiv.text;
+    } else {
+      // fallback: use entire body but still clean
+      cleanedText = document.body?.text ?? html;
+    }
+
+    cleanedText = cleanedText.trim();
+
+    return cleanedText;
   }
 }

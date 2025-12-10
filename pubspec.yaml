@@ -49,12 +49,17 @@ dependencies:
   #for launching calendar add-intent
   url_launcher: ^6.1.0
 
+  #reason why devs hate plugins in flutter
   device_calendar: ^4.3.3
 
   #gmail integration
   google_sign_in: ^6.1.0
-  http: ^0.13.6
+  http: ^1.6.0
   googleapis: ^11.1.0
+
+  #gemini integration
+  google_generative_ai: ^0.4.3
+  html: ^0.15.0
 
 dev_dependencies:
   flutter_test:
