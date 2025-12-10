@@ -51,6 +51,11 @@ dependencies:
 
   device_calendar: ^4.3.3
 
+  #gmail integration
+  google_sign_in: ^6.1.0
+  http: ^0.13.6
+  googleapis: ^11.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
