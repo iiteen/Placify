@@ -1,5 +1,4 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter/foundation.dart';
 
 class GeminiParser {
   late final GenerativeModel _model;
@@ -122,6 +121,29 @@ $body
     final response = await _model.generateContent([Content.text(content)]);
 
     final text = response.text ?? "{}";
-    return text;
+    return cleanJsonString(text);
   }
+
+  String cleanJsonString(String input) {
+    // Remove any ```json ... ``` or ``` ... ``` fences
+    var cleaned = input.trim();
+
+    // Remove ```json at start
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.substring(7).trim();
+    }
+
+    // Remove ``` at start (if not caught above)
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.substring(3).trim();
+    }
+
+    // Remove ``` at end
+    if (cleaned.endsWith("```")) {
+      cleaned = cleaned.substring(0, cleaned.length - 3).trim();
+    }
+
+    return cleaned;
+  }
+
 }

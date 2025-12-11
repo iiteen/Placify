@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-// import 'screens/home_screen.dart';
-import 'screens/gmail_test_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,8 +13,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Placement Tracker',
       theme: ThemeData(primarySwatch: Colors.blue),
-      // home: const HomeScreen(),
-      home: const GmailTestScreen(),
+      home: const HomeScreen(),
+      // home: const GmailTestScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

@@ -3,6 +3,7 @@ import '../services/database_service.dart';
 import '../models/role.dart';
 import 'role_details_screen.dart';
 import 'add_role_screen.dart';
+import 'gmail_test_screen.dart'; // Import Gmail test screen
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -62,7 +63,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Placement Tracker")),
+      appBar: AppBar(
+        title: const Text("Placement Tracker"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.email),
+            tooltip: 'Gmail Test',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GmailTestScreen()),
+              ).then((_) => _loadRoles());
+            },
+          ),
+        ],
+      ),
       body: roles.isEmpty
           ? const Center(child: Text("No roles added yet"))
           : ListView.builder(

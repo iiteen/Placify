@@ -78,7 +78,7 @@ class CalendarService {
       title: "${role.companyName} — ${role.roleName} ($eventType)",
       start: start,
       end: end,
-      reminders: reminders,
+      // reminders: reminders,
     );
 
     final res = await _calendar.createOrUpdateEvent(event);
