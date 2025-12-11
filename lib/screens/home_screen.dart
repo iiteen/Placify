@@ -21,8 +21,8 @@ class _HomeScreenState extends State<HomeScreen>
   List<Role> rejectedRoles = [];
 
   // Refresh flags
-  bool refreshActive = false;
-  bool refreshRejected = false;
+  bool refreshActive = true;
+  bool refreshRejected = true;
 
   @override
   void initState() {
@@ -30,8 +30,14 @@ class _HomeScreenState extends State<HomeScreen>
 
     _tabController = TabController(length: 2, vsync: this);
 
-    // Default: load only active tab on start
-    _loadActiveRoles();
+    // App just opened -> force both tabs to refresh once
+    refreshActive = true;
+    refreshRejected = true;
+
+    // Active tab is visible initially → reload now
+    _loadActiveRoles().then((_) {
+      refreshActive = false; // we used up the refresh
+    });
 
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
@@ -51,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
   }
+
 
   @override
   void dispose() {

@@ -54,6 +54,13 @@ class CalendarService {
     return [];
   }
 
+  String _styledEventType(String t) {
+    if (t.contains('PPT')) return "🟩 PPT";
+    if (t.contains('Test')) return "🟦 TEST";
+    if (t.contains('Application Deadline')) return "🟥 APPLY";
+    return "📌 EVENT";
+  }
+
   Future<String?> _createEvent(
     Role role,
     String eventType,
@@ -68,7 +75,8 @@ class CalendarService {
 
       final event = Event(
         _calendarId!,
-        title: "${role.companyName} — ${role.roleName} ($eventType)",
+        title:
+            "${_styledEventType(eventType)} — ${role.companyName} (${role.roleName})",
         start: start,
         end: end,
         // TODO: handle this later, what reminder to go with
