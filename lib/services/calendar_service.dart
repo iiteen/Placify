@@ -143,11 +143,11 @@ class CalendarService {
       debugPrint("🚫 Role rejected → deleting all events...");
       await _deleteEvent(role.pptEventId);
       await _deleteEvent(role.testEventId);
-      await _deleteEvent(role.interviewEventId);
+      await _deleteEvent(role.applicationDeadlineEventId);
 
       role.pptEventId = null;
       role.testEventId = null;
-      role.interviewEventId = null;
+      role.applicationDeadlineEventId = null;
       return;
     }
 
@@ -170,10 +170,10 @@ class CalendarService {
 
     await _syncSingle(
       role: role,
-      type: 'Interview',
-      date: role.interviewDate,
-      eventId: role.interviewEventId,
-      setEventId: (id) => role.interviewEventId = id,
+      type: 'Application Deadline',
+      date: role.applicationDeadline,
+      eventId: role.applicationDeadlineEventId,
+      setEventId: (id) => role.applicationDeadlineEventId = id,
     );
   }
 }

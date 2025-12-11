@@ -48,15 +48,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (role.testDate != null) {
       deadlines.add("Test: ${formatDateTime(role.testDate!)}");
     }
-    if (role.interviewDate != null) {
-      deadlines.add("Interview: ${formatDateTime(role.interviewDate!)}");
+    if (role.applicationDeadline != null) {
+      deadlines.add(
+        "Application Deadline: ${formatDateTime(role.applicationDeadline!)}",
+      );
     }
 
     if (deadlines.isEmpty) return "No deadlines yet";
 
     return deadlines.join(" | ");
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () async {

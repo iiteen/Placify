@@ -6,7 +6,7 @@ class Role {
 
   DateTime? pptDate;
   DateTime? testDate;
-  DateTime? interviewDate;
+  DateTime? applicationDeadline;
 
   bool isInterested;
   bool isRejected;
@@ -14,7 +14,7 @@ class Role {
   // Calendar event IDs for update/delete
   String? pptEventId;
   String? testEventId;
-  String? interviewEventId;
+  String? applicationDeadlineEventId;
 
   Role({
     this.id,
@@ -22,12 +22,12 @@ class Role {
     required this.roleName,
     this.pptDate,
     this.testDate,
-    this.interviewDate,
+    this.applicationDeadline,
     this.isInterested = false,
     this.isRejected = false,
     this.pptEventId,
     this.testEventId,
-    this.interviewEventId,
+    this.applicationDeadlineEventId,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,12 +37,12 @@ class Role {
       'roleName': roleName,
       'pptDate': pptDate?.toIso8601String(),
       'testDate': testDate?.toIso8601String(),
-      'interviewDate': interviewDate?.toIso8601String(),
+      'applicationDeadline': applicationDeadline?.toIso8601String(),
       'isInterested': isInterested ? 1 : 0,
       'isRejected': isRejected ? 1 : 0,
       'pptEventId': pptEventId,
       'testEventId': testEventId,
-      'interviewEventId': interviewEventId,
+      'applicationDeadlineEventId': applicationDeadlineEventId,
     };
   }
 
@@ -57,14 +57,14 @@ class Role {
       testDate: map['testDate'] != null
           ? DateTime.parse(map['testDate'])
           : null,
-      interviewDate: map['interviewDate'] != null
-          ? DateTime.parse(map['interviewDate'])
+      applicationDeadline: map['applicationDeadline'] != null
+          ? DateTime.parse(map['applicationDeadline'])
           : null,
       isInterested: (map['isInterested'] == 1),
       isRejected: (map['isRejected'] == 1),
       pptEventId: map['pptEventId'],
       testEventId: map['testEventId'],
-      interviewEventId: map['interviewEventId'],
+      applicationDeadlineEventId: map['applicationDeadlineEventId'],
     );
   }
 }

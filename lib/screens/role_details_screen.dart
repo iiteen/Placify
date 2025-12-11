@@ -26,12 +26,12 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
       roleName: widget.role.roleName,
       pptDate: widget.role.pptDate,
       testDate: widget.role.testDate,
-      interviewDate: widget.role.interviewDate,
+      applicationDeadline: widget.role.applicationDeadline,
       isInterested: widget.role.isInterested,
       isRejected: widget.role.isRejected,
       pptEventId: widget.role.pptEventId,
       testEventId: widget.role.testEventId,
-      interviewEventId: widget.role.interviewEventId,
+      applicationDeadlineEventId: widget.role.applicationDeadlineEventId,
     );
   }
 
@@ -213,10 +213,10 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
             ),
             const SizedBox(height: 12),
             _dateRow(
-              'Interview Date',
-              editableRole.interviewDate,
-              (d) => setState(() => editableRole.interviewDate = d),
-              () => setState(() => editableRole.interviewDate = null),
+              'Application Deadline',
+              editableRole.applicationDeadline,
+              (d) => setState(() => editableRole.applicationDeadline = d),
+              () => setState(() => editableRole.applicationDeadline = null),
             ),
             const Spacer(),
             Row(

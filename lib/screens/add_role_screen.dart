@@ -17,7 +17,7 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
 
   DateTime? pptDate;
   DateTime? testDate;
-  DateTime? interviewDate;
+  DateTime? applicationDeadline;
 
   final db = DatabaseService();
   final calendar = CalendarService();
@@ -100,7 +100,7 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
       roleName: roleController.text.trim(),
       pptDate: pptDate,
       testDate: testDate,
-      interviewDate: interviewDate,
+      applicationDeadline: applicationDeadline,
       isInterested: false,
       isRejected: false,
     );
@@ -160,10 +160,10 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
                 ),
                 const SizedBox(height: 12),
                 _dateRow(
-                  'Interview Date',
-                  interviewDate,
-                  (d) => setState(() => interviewDate = d),
-                  () => setState(() => interviewDate = null),
+                  'Application Deadline',
+                  applicationDeadline,
+                  (d) => setState(() => applicationDeadline = d),
+                  () => setState(() => applicationDeadline = null),
                 ),
                 const SizedBox(height: 30),
                 SizedBox(
