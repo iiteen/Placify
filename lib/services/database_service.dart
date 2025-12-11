@@ -32,12 +32,12 @@ class DatabaseService {
         roleName TEXT NOT NULL,
         pptDate TEXT,
         testDate TEXT,
-        interviewDate TEXT,
+        applicationDeadline TEXT,
         isInterested INTEGER NOT NULL,
         isRejected INTEGER NOT NULL,
         pptEventId TEXT,
         testEventId TEXT,
-        interviewEventId TEXT
+        applicationDeadlineEventId TEXT
       )
     ''');
   }
@@ -72,5 +72,23 @@ class DatabaseService {
   Future<int> deleteRole(int id) async {
     final db = await database;
     return await db.delete('roles', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// Finds a role by company name and role name.
+  /// Returns null if no matching role is found.
+  Future<Role?> findRole(String companyName, String roleName) async {
+    final db = await database;
+    final rows = await db.query(
+      'roles',
+      where: 'companyName = ? AND roleName = ?',
+      whereArgs: [companyName, roleName],
+      limit: 1,
+    );
+
+    if (rows.isNotEmpty) {
+      return Role.fromMap(rows.first);
+    } else {
+      return null;
+    }
   }
 }
