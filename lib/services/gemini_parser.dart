@@ -5,9 +5,9 @@ class GeminiParser {
 
   GeminiParser(String apiKey) {
     _model = GenerativeModel(
-      model: "gemini-2.5-flash",
+      model: "gemma-3-27b-it",
       apiKey: apiKey,
-      systemInstruction: Content.system(_systemPrompt),
+      // systemInstruction: Content.system(_systemPrompt),
     );
   }
 
@@ -111,6 +111,8 @@ RULES & EXTRACTION LOGIC
   }) async {
     final content =
         """
+$_systemPrompt
+
 EMAIL SUBJECT:
 $subject
 

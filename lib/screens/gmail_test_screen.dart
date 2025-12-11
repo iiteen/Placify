@@ -41,7 +41,7 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
 
       final metas = await _gmail.searchAndFetchMetadata(
         query: query,
-        maxResults: 50,
+        maxResults: 5,
       );
 
       if (!mounted) return;

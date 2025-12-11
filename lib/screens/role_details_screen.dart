@@ -109,9 +109,6 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
 
   Future<void> _saveRole() async {
     try {
-      // Persist role changes
-      await db.updateRole(editableRole);
-
       // Sync calendar events safely
       await calendar.syncRoleEvents(editableRole);
 
@@ -131,10 +128,6 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
         editableRole.isInterested = interested;
         editableRole.isRejected = !interested;
       });
-
-      await db.updateRole(editableRole);
-      await calendar.syncRoleEvents(editableRole);
-      await db.updateRole(editableRole);
     } catch (e, st) {
       debugPrint("❌ Error toggling interested: $e\n$st");
     }
@@ -146,10 +139,6 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
         editableRole.isRejected = rejected;
         editableRole.isInterested = !rejected;
       });
-
-      await db.updateRole(editableRole);
-      await calendar.syncRoleEvents(editableRole);
-      await db.updateRole(editableRole);
     } catch (e, st) {
       debugPrint("❌ Error toggling rejected: $e\n$st");
     }
@@ -182,9 +171,6 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
       // delete calendar events first
       editableRole.isRejected = true;
       await calendar.syncRoleEvents(editableRole);
-
-      // persist clearing of event ids
-      await db.updateRole(editableRole);
 
       // delete DB row
       await db.deleteRole(editableRole.id!);
