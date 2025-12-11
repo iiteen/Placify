@@ -1,7 +1,5 @@
 # flutter_application_1
 
-flutter run --profile | findstr /V "D/FlutterJNI I/Choreographer W/OpenGLRenderer I/ImeTracker W/WindowOnBackDispatcher I/TextInputPlugin D/EGL_emulation D/InputMethodManager"
-
 !EGL_emulation, !Choreographer, !RemoteInputConnectionImpl, !ImeTracker, !OpenGLRenderer, !TextInputPlugin, !InsetsController, !InputMethodManager
 
 A new Flutter project.
@@ -18,3 +16,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Known Issues
+
+- Currently using `gemma-3-27b-it`. It's support might be removed in future. Need to maintain this. Also this model doesn't support instruction based chat.

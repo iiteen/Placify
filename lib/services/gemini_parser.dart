@@ -11,10 +11,15 @@ class GeminiParser {
     );
   }
 
-static const String _systemPrompt = """
+  static const String _systemPrompt = """
 You are an advanced parser for IIT placement cell emails.
 
 Your task is to extract structured placement information from extremely inconsistent email formats.
+
+IMPORTANT:
+- The email was received at the datetime provided in the 'EMAIL RECEIVED DATETIME' field.
+- Use this as reference to interpret relative date terms in the email, such as 'tomorrow', 'next Monday', 'yesterday', 'in 3 days', etc.
+- Always convert all dates/times to absolute ISO 8601 format (YYYY-MM-DDTHH:MM) in your output.
 
 OUTPUT REQUIREMENTS:
 - Return ONLY valid JSON.
@@ -81,7 +86,8 @@ RULES & EXTRACTION LOGIC
 
 6. DATE & TIME FORMATTING
 - Accept ANY date/time format found in the email.
-- OUTPUT must always be ISO 8601 (YYYY-MM-DDTHH:MM).
+- Use the 'EMAIL RECEIVED DATETIME' to interpret relative dates like 'tomorrow', 'next Monday', 'yesterday'.
+- OUTPUT must always be absolute ISO 8601 (YYYY-MM-DDTHH:MM).
 - If only a date is provided (no time):
       → Output YYYY-MM-DDT00:00.
 - If no valid datetime is found:
@@ -100,18 +106,19 @@ RULES & EXTRACTION LOGIC
       → Treat the datetime as invalid.
       → Output null.
 - The presence of TBD always overrides any conflicting datetime.
-
 """;
-
-
 
   Future<String> parseEmail({
     required String subject,
     required String body,
+    required String emailReceivedDateTime,
   }) async {
     final content =
         """
 $_systemPrompt
+
+EMAIL RECEIVED DATETIME:
+$emailReceivedDateTime
 
 EMAIL SUBJECT:
 $subject
@@ -127,25 +134,20 @@ $body
   }
 
   String cleanJsonString(String input) {
-    // Remove any ```json ... ``` or ``` ... ``` fences
     var cleaned = input.trim();
 
-    // Remove ```json at start
     if (cleaned.startsWith("```json")) {
       cleaned = cleaned.substring(7).trim();
     }
 
-    // Remove ``` at start (if not caught above)
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.substring(3).trim();
     }
 
-    // Remove ``` at end
     if (cleaned.endsWith("```")) {
       cleaned = cleaned.substring(0, cleaned.length - 3).trim();
     }
 
     return cleaned;
   }
-
 }

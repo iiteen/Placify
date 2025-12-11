@@ -97,6 +97,7 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
           final parsedJsonStr = await parser.parseEmail(
             subject: subjectHeader,
             body: body ?? "",
+            emailReceivedDateTime: date,
           );
 
           debugPrint("=============== PARSED JSON ================");
