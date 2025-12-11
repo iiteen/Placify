@@ -47,24 +47,37 @@ class Role {
   }
 
   factory Role.fromMap(Map<String, dynamic> map) {
+    DateTime? safeParseDate(dynamic value) {
+      if (value == null) return null;
+      try {
+        return DateTime.parse(value.toString());
+      } catch (_) {
+        return null;
+      }
+    }
+
+    bool safeBool(dynamic value) {
+      if (value == null) return false;
+      if (value is int) return value == 1;
+      if (value is bool) return value;
+      if (value is String) return value == '1' || value.toLowerCase() == 'true';
+      return false;
+    }
+
     return Role(
       id: map['id'] is int
           ? map['id'] as int
-          : (map['id'] != null ? int.parse(map['id'].toString()) : null),
-      companyName: map['companyName'] ?? '',
-      roleName: map['roleName'] ?? '',
-      pptDate: map['pptDate'] != null ? DateTime.parse(map['pptDate']) : null,
-      testDate: map['testDate'] != null
-          ? DateTime.parse(map['testDate'])
-          : null,
-      applicationDeadline: map['applicationDeadline'] != null
-          ? DateTime.parse(map['applicationDeadline'])
-          : null,
-      isInterested: (map['isInterested'] == 1),
-      isRejected: (map['isRejected'] == 1),
-      pptEventId: map['pptEventId'],
-      testEventId: map['testEventId'],
-      applicationDeadlineEventId: map['applicationDeadlineEventId'],
+          : (map['id'] != null ? int.tryParse(map['id'].toString()) : null),
+      companyName: map['companyName']?.toString() ?? '',
+      roleName: map['roleName']?.toString() ?? '',
+      pptDate: safeParseDate(map['pptDate']),
+      testDate: safeParseDate(map['testDate']),
+      applicationDeadline: safeParseDate(map['applicationDeadline']),
+      isInterested: safeBool(map['isInterested']),
+      isRejected: safeBool(map['isRejected']),
+      pptEventId: map['pptEventId']?.toString(),
+      testEventId: map['testEventId']?.toString(),
+      applicationDeadlineEventId: map['applicationDeadlineEventId']?.toString(),
     );
   }
 }

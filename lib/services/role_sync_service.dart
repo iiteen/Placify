@@ -7,94 +7,107 @@ class RoleSyncService {
   final DatabaseService _db = DatabaseService();
   final CalendarService _calendar = CalendarService();
 
-  /// Sync parsed email → DB → Calendar (and save event IDs)
+  /// Sync parsed email → DB → Calendar (save event IDs)
   Future<void> syncRoleFromParsedData(Map<String, dynamic> parsedData) async {
-    final companyName = parsedData['company'];
-    final applicationDeadline = parsedData['application_deadline'];
-    final pptDate = parsedData['ppt']?['datetime'];
-    final rolesData = parsedData['roles'];
+    try {
+      final companyName = parsedData['company'];
+      final applicationDeadline = parsedData['application_deadline'];
+      final pptDate = parsedData['ppt']?['datetime'];
+      final rolesData = parsedData['roles'];
 
-    if (companyName == null || companyName.isEmpty) {
-      debugPrint("No valid company name found in parsed data.");
-      return;
-    }
+      if (companyName == null || companyName.isEmpty || rolesData == null) {
+        debugPrint("⚠️ No valid company name or roles found in parsed data.");
+        return;
+      }
 
-    for (var roleData in rolesData) {
-      final roleName = roleData['name'];
-      final tests = roleData['tests'];
-      final test = (tests != null && tests.isNotEmpty) ? tests[0] : null;
-      final testDate = test != null ? test['datetime'] : null;
+      for (var roleData in rolesData) {
+        final roleName = roleData['name'];
+        if (roleName == null || roleName.isEmpty) continue;
 
-      /// Check if this role already exists
-      Role? existingRole = await _db.findRole(companyName, roleName);
+        //TODO: later handle mutliple tests for each role
+        final tests = roleData['tests'];
+        final test = (tests != null && tests.isNotEmpty) ? tests[0] : null;
+        final testDate = test != null ? test['datetime'] : null;
 
-      if (existingRole == null) {
-        // -------------- NEW ROLE --------------
-        Role newRole = Role(
-          companyName: companyName,
-          roleName: roleName,
-          pptDate: pptDate != null ? DateTime.parse(pptDate) : null,
-          applicationDeadline: applicationDeadline != null
-              ? DateTime.parse(applicationDeadline)
-              : null,
-          testDate: testDate != null ? DateTime.parse(testDate) : null,
-          isInterested: false,
-          isRejected: false,
-        );
+        Role? role = await _db.findRole(companyName, roleName);
 
-        await _db.insertRole(newRole);
-        debugPrint(
-          "Inserted new role: ${newRole.companyName} — ${newRole.roleName}",
-        );
+        final DateTime? pptDt = pptDate != null
+            ? DateTime.tryParse(pptDate)
+            : null;
+        final DateTime? appDl = applicationDeadline != null
+            ? DateTime.tryParse(applicationDeadline)
+            : null;
+        final DateTime? tstDt = testDate != null
+            ? DateTime.tryParse(testDate)
+            : null;
 
-        // CREATE calendar events
-        await _calendar.syncRoleEvents(newRole);
-
-        // 🔥 SAVE eventIds BACK TO DB (important!)
-        await _db.updateRole(newRole);
-      } else {
-        // -------------- EXISTING ROLE --------------
-        bool needsUpdate = false;
-
-        if (pptDate != null &&
-            existingRole.pptDate != DateTime.parse(pptDate)) {
-          existingRole.pptDate = DateTime.parse(pptDate);
-          needsUpdate = true;
-        }
-
-        if (applicationDeadline != null &&
-            existingRole.applicationDeadline !=
-                DateTime.parse(applicationDeadline)) {
-          existingRole.applicationDeadline = DateTime.parse(
-            applicationDeadline,
+        if (role == null) {
+          // -------------- NEW ROLE --------------
+          role = Role(
+            companyName: companyName,
+            roleName: roleName,
+            pptDate: pptDt,
+            applicationDeadline: appDl,
+            testDate: tstDt,
+            isInterested: false,
+            isRejected: false,
           );
-          needsUpdate = true;
-        }
 
-        if (testDate != null &&
-            existingRole.testDate != DateTime.parse(testDate)) {
-          existingRole.testDate = DateTime.parse(testDate);
-          needsUpdate = true;
-        }
+          await _db.insertRole(role);
 
-        if (needsUpdate) {
-          // First update DB
-          await _db.updateRole(existingRole);
           debugPrint(
-            "Updated role: ${existingRole.companyName} — ${existingRole.roleName}",
+            "✅ Inserted new role: ${role.companyName} — ${role.roleName}",
           );
 
-          // Then sync calendar events
-          await _calendar.syncRoleEvents(existingRole);
+          // Create calendar events
+          try {
+            await _calendar.syncRoleEvents(role);
+          } catch (e, st) {
+            debugPrint("❌ Calendar sync failed for new role: $e\n$st");
+          }
 
-          // 🔥 Save updated event IDs too
-          await _db.updateRole(existingRole);
+          // Save event IDs
+          await _db.updateRole(role);
         } else {
-          debugPrint(
-            "No changes detected for role: ${existingRole.companyName} — ${existingRole.roleName}",
-          );
+          // -------------- EXISTING ROLE --------------
+          bool needsUpdate = false;
+
+          if (pptDt != null && role.pptDate != pptDt) {
+            role.pptDate = pptDt;
+            needsUpdate = true;
+          }
+          if (appDl != null && role.applicationDeadline != appDl) {
+            role.applicationDeadline = appDl;
+            needsUpdate = true;
+          }
+          if (tstDt != null && role.testDate != tstDt) {
+            role.testDate = tstDt;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await _db.updateRole(role);
+            debugPrint(
+              "♻️ Updated role: ${role.companyName} — ${role.roleName}",
+            );
+
+            try {
+              await _calendar.syncRoleEvents(role);
+            } catch (e, st) {
+              debugPrint("❌ Calendar sync failed for existing role: $e\n$st");
+            }
+
+            // Save updated event IDs
+            await _db.updateRole(role);
+          } else {
+            debugPrint(
+              "ℹ️ No changes detected for role: ${role.companyName} — ${role.roleName}",
+            );
+          }
         }
       }
+    } catch (e, st) {
+      debugPrint("❌ RoleSyncService sync error: $e\n$st");
     }
   }
 }

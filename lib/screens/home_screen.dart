@@ -23,10 +23,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRoles() async {
-    final data = await db.getAllRoles();
-    setState(() {
-      roles = data;
-    });
+    try {
+      final data = await db.getAllRoles();
+      if (!mounted) return;
+      setState(() {
+        roles = data;
+      });
+    } catch (e, st) {
+      debugPrint("❌ Error loading roles: $e\n$st");
+      if (!mounted) return;
+      setState(() {
+        roles = [];
+      });
+    }
   }
 
   Color _statusColor(Role role) {
@@ -111,12 +120,16 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () async {
-          final added = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddRoleScreen()),
-          );
-          if (added == true) {
-            _loadRoles(); // refresh after new role added
+          try {
+            final added = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AddRoleScreen()),
+            );
+            if (added == true) {
+              _loadRoles(); // refresh after new role added
+            }
+          } catch (e, st) {
+            debugPrint("❌ Error opening AddRoleScreen: $e\n$st");
           }
         },
       ),

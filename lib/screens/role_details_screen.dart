@@ -39,34 +39,36 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
     Function(DateTime?) setter,
     DateTime? initial,
   ) async {
-    DateTime now = initial ?? DateTime.now();
+    try {
+      DateTime now = initial ?? DateTime.now();
 
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
-    );
-    if (!mounted) return;
-    if (pickedDate == null) return;
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: now,
+        firstDate: DateTime(now.year - 1),
+        lastDate: DateTime(now.year + 3),
+      );
+      if (!mounted || pickedDate == null) return;
 
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(now),
-    );
-    if (!mounted) return;
-    if (pickedTime == null) return;
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(now),
+      );
+      if (!mounted || pickedTime == null) return;
 
-    final dt = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
+      final dt = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
 
-    if (!mounted) return;
-    setState(() => setter(dt));
+      if (!mounted) return;
+      setState(() => setter(dt));
+    } catch (e, st) {
+      debugPrint("❌ Error picking date/time: $e\n$st");
+    }
   }
 
   Widget _dateRow(
@@ -106,55 +108,92 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
   }
 
   Future<void> _saveRole() async {
-    // First persist field changes (so role.id exists)
-    await db.updateRole(editableRole);
+    try {
+      // Persist role changes
+      await db.updateRole(editableRole);
 
-    // Sync calendar events (this mutates eventId fields on editableRole)
-    await calendar.syncRoleEvents(editableRole);
+      // Sync calendar events safely
+      await calendar.syncRoleEvents(editableRole);
 
-    // Save event ids back to DB
-    await db.updateRole(editableRole);
+      // Save event IDs back to DB
+      await db.updateRole(editableRole);
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e, st) {
+      debugPrint("❌ Error saving role: $e\n$st");
+    }
+  }
+
+  Future<void> _toggleInterested(bool interested) async {
+    try {
+      setState(() {
+        editableRole.isInterested = interested;
+        editableRole.isRejected = !interested;
+      });
+
+      await db.updateRole(editableRole);
+      await calendar.syncRoleEvents(editableRole);
+      await db.updateRole(editableRole);
+    } catch (e, st) {
+      debugPrint("❌ Error toggling interested: $e\n$st");
+    }
+  }
+
+  Future<void> _toggleRejected(bool rejected) async {
+    try {
+      setState(() {
+        editableRole.isRejected = rejected;
+        editableRole.isInterested = !rejected;
+      });
+
+      await db.updateRole(editableRole);
+      await calendar.syncRoleEvents(editableRole);
+      await db.updateRole(editableRole);
+    } catch (e, st) {
+      debugPrint("❌ Error toggling rejected: $e\n$st");
+    }
   }
 
   Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete Role'),
-        content: const Text(
-          'Are you sure you want to delete this role? This will also remove calendar reminders.',
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Delete Role'),
+          content: const Text(
+            'Are you sure you want to delete this role? This will also remove corresponding calendar reminders.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirm != true) return;
+      if (confirm != true) return;
 
-    // delete calendar events first
-    // Mark role as rejected so syncRoleEvents will delete events and clear ids
-    editableRole.isRejected = true;
-    await calendar.syncRoleEvents(editableRole);
+      // delete calendar events first
+      editableRole.isRejected = true;
+      await calendar.syncRoleEvents(editableRole);
 
-    // persist clearing of event ids
-    await db.updateRole(editableRole);
+      // persist clearing of event ids
+      await db.updateRole(editableRole);
 
-    // then delete the DB row
-    await db.deleteRole(editableRole.id!);
+      // delete DB row
+      await db.deleteRole(editableRole.id!);
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e, st) {
+      debugPrint("❌ Error deleting role: $e\n$st");
+    }
   }
 
   @override
@@ -177,10 +216,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
                         ? Colors.green
                         : null,
                   ),
-                  onPressed: () => setState(() {
-                    editableRole.isInterested = true;
-                    editableRole.isRejected = false;
-                  }),
+                  onPressed: () => _toggleInterested(true),
                   child: const Text('Interested'),
                 ),
                 ElevatedButton(
@@ -189,10 +225,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
                         ? Colors.red
                         : null,
                   ),
-                  onPressed: () => setState(() {
-                    editableRole.isRejected = true;
-                    editableRole.isInterested = false;
-                  }),
+                  onPressed: () => _toggleRejected(true),
                   child: const Text('Reject'),
                 ),
               ],

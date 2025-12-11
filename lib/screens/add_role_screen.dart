@@ -28,32 +28,34 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
   ) async {
     DateTime now = initial ?? DateTime.now();
 
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
-    );
-    if (!mounted) return;
-    if (pickedDate == null) return;
+    try {
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: now,
+        firstDate: DateTime(now.year - 1),
+        lastDate: DateTime(now.year + 3),
+      );
+      if (!mounted || pickedDate == null) return;
 
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(now),
-    );
-    if (!mounted) return;
-    if (pickedTime == null) return;
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(now),
+      );
+      if (!mounted || pickedTime == null) return;
 
-    final dt = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
+      final dt = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
 
-    if (!mounted) return;
-    setState(() => setter(dt));
+      if (!mounted) return;
+      setState(() => setter(dt));
+    } catch (e, st) {
+      debugPrint("❌ Error picking date/time: $e\n$st");
+    }
   }
 
   Widget _dateRow(
@@ -105,14 +107,20 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
       isRejected: false,
     );
 
-    // insert -> sets role.id
-    await db.insertRole(role);
+    try {
+      // insert -> sets role.id
+      await db.insertRole(role);
 
-    // sync calendar (will create events and set eventIds on role)
-    await calendar.syncRoleEvents(role);
+      // sync calendar (will create events and set eventIds on role)
+      await calendar.syncRoleEvents(role);
 
-    // persist event IDs back to DB
-    await db.updateRole(role);
+      // persist event IDs back to DB
+      await db.updateRole(role);
+
+      debugPrint("✅ Role added and calendar events synced.");
+    } catch (e, st) {
+      debugPrint("❌ Error saving role or syncing calendar: $e\n$st");
+    }
 
     if (!mounted) return;
     Navigator.pop(context, true);
