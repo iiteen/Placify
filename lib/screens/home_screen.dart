@@ -3,7 +3,7 @@ import '../services/database_service.dart';
 import '../models/role.dart';
 import 'role_details_screen.dart';
 import 'add_role_screen.dart';
-import 'gmail_test_screen.dart'; // Import Gmail test screen
+import 'gmail_test_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,36 +12,102 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final db = DatabaseService();
-  List<Role> roles = [];
+  late final TabController _tabController;
+
+  List<Role> activeRoles = [];
+  List<Role> rejectedRoles = [];
+
+  // Refresh flags
+  bool refreshActive = false;
+  bool refreshRejected = false;
 
   @override
   void initState() {
     super.initState();
-    _loadRoles();
+
+    _tabController = TabController(length: 2, vsync: this);
+
+    // Default: load only active tab on start
+    _loadActiveRoles();
+
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        return;
+      }
+
+      if (_tabController.index == 0) {
+        if (refreshActive) {
+          _loadActiveRoles();
+          refreshActive = false;
+        }
+      } else if (_tabController.index == 1) {
+        if (refreshRejected) {
+          _loadRejectedRoles();
+          refreshRejected = false;
+        }
+      }
+    });
   }
 
-  Future<void> _loadRoles() async {
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ---------------------------
+  // LOADERS
+  // ---------------------------
+
+  Future<void> _loadActiveRoles() async {
     try {
-      final data = await db.getAllRoles();
-      if (!mounted) return;
+      final all = await db.getAllRoles();
+
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
-        roles = data;
+        activeRoles = all.where((r) => !r.isRejected).toList();
       });
     } catch (e, st) {
-      debugPrint("❌ Error loading roles: $e\n$st");
-      if (!mounted) return;
-      setState(() {
-        roles = [];
-      });
+      debugPrint("❌ Error loading active roles: $e\n$st");
     }
   }
 
+  Future<void> _loadRejectedRoles() async {
+    try {
+      final all = await db.getAllRoles();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        rejectedRoles = all.where((r) => r.isRejected).toList();
+      });
+    } catch (e, st) {
+      debugPrint("❌ Error loading rejected roles: $e\n$st");
+    }
+  }
+
+  // ---------------------------
+  // UI HELPERS
+  // ---------------------------
+
   Color _statusColor(Role role) {
-    if (role.isRejected) return Colors.red.shade200;
-    if (role.isInterested) return Colors.green.shade200;
-    return Colors.yellow.shade200; // new/not decided
+    if (role.isRejected) {
+      return Colors.red.shade100;
+    }
+
+    if (role.isInterested) {
+      return Colors.green.shade100;
+    }
+
+    return Colors.yellow.shade100;
   }
 
   String _deadlineText(Role role) {
@@ -50,24 +116,96 @@ class _HomeScreenState extends State<HomeScreen> {
           "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
     }
 
-    List<String> deadlines = [];
+    List<String> out = [];
 
     if (role.pptDate != null) {
-      deadlines.add("PPT: ${formatDateTime(role.pptDate!)}");
+      out.add("PPT: ${formatDateTime(role.pptDate!)}");
     }
+
     if (role.testDate != null) {
-      deadlines.add("Test: ${formatDateTime(role.testDate!)}");
+      out.add("Test: ${formatDateTime(role.testDate!)}");
     }
+
     if (role.applicationDeadline != null) {
-      deadlines.add(
-        "Application Deadline: ${formatDateTime(role.applicationDeadline!)}",
+      out.add("Deadline: ${formatDateTime(role.applicationDeadline!)}");
+    }
+
+    if (out.isEmpty) {
+      return "No deadlines yet";
+    }
+
+    return out.join(" • ");
+  }
+
+  Widget _buildRoleList(List<Role> roles) {
+    if (roles.isEmpty) {
+      return const Center(
+        child: Text("No roles in this section", style: TextStyle(fontSize: 16)),
       );
     }
 
-    if (deadlines.isEmpty) return "No deadlines yet";
+    return ListView.builder(
+      itemCount: roles.length,
+      itemBuilder: (context, index) {
+        final role = roles[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          color: _statusColor(role),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+          child: ListTile(
+            title: Text(
+              "${role.companyName} — ${role.roleName}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(_deadlineText(role)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RoleDetailsScreen(role: role),
+                    ),
+                  )
+                  .then((changed) async {
+                    try {
+                      if (changed == true) {
+                        // mark both tabs for refresh
+                        refreshActive = true;
+                        refreshRejected = true;
 
-    return deadlines.join(" | ");
+                        // Immediately reload the visible tab so user sees updates
+                        if (_tabController.index == 0) {
+                          await _loadActiveRoles();
+                          refreshActive = false;
+                        } else if (_tabController.index == 1) {
+                          await _loadRejectedRoles();
+                          refreshRejected = false;
+                        }
+                      }
+                    } catch (e, st) {
+                      debugPrint(
+                        "❌ Error handling return from RoleDetails: $e\n$st",
+                      );
+                    }
+                  })
+                  .catchError((err, st) {
+                    debugPrint(
+                      "❌ Navigation error to RoleDetailsScreen: $err\n$st",
+                    );
+                  });
+            },
+          ),
+        );
+      },
+    );
   }
+
+  // ---------------------------
+  // MAIN BUILD
+  // ---------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -77,56 +215,72 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.email),
-            tooltip: 'Gmail Test',
+            tooltip: "Gmail Test",
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const GmailTestScreen()),
-              ).then((_) => _loadRoles());
+              Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (_) => const GmailTestScreen()),
+                  )
+                  .then((changed) async {
+                    try {
+                      if (changed == true) {
+                        refreshActive = true;
+                        refreshRejected = true;
+
+                        // reload current visible tab immediately
+                        if (_tabController.index == 0) {
+                          await _loadActiveRoles();
+                          refreshActive = false;
+                        } else if (_tabController.index == 1) {
+                          await _loadRejectedRoles();
+                          refreshRejected = false;
+                        }
+                      }
+                    } catch (e, st) {
+                      debugPrint(
+                        "❌ Error handling return from GmailTestScreen: $e\n$st",
+                      );
+                    }
+                  })
+                  .catchError((err, st) {
+                    debugPrint("❌ Gmail navigation error: $err\n$st");
+                  });
             },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "Active Roles"),
+            Tab(text: "Rejected Roles"),
+          ],
+        ),
       ),
-      body: roles.isEmpty
-          ? const Center(child: Text("No roles added yet"))
-          : ListView.builder(
-              itemCount: roles.length,
-              itemBuilder: (context, index) {
-                final role = roles[index];
-                return Card(
-                  color: _statusColor(role),
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  child: ListTile(
-                    title: Text(
-                      "${role.companyName} — ${role.roleName}",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(_deadlineText(role)),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => RoleDetailsScreen(role: role),
-                        ),
-                      ).then((_) => _loadRoles());
-                    },
-                  ),
-                );
-              },
-            ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [_buildRoleList(activeRoles), _buildRoleList(rejectedRoles)],
+      ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () async {
           try {
-            final added = await Navigator.push(
+            final added = await Navigator.push<bool>(
               context,
               MaterialPageRoute(builder: (_) => const AddRoleScreen()),
             );
+
             if (added == true) {
-              _loadRoles(); // refresh after new role added
+              refreshActive = true;
+              refreshRejected = true;
+
+              // reload the visible tab immediately
+              if (_tabController.index == 0) {
+                await _loadActiveRoles();
+                refreshActive = false;
+              } else if (_tabController.index == 1) {
+                await _loadRejectedRoles();
+                refreshRejected = false;
+              }
             }
           } catch (e, st) {
             debugPrint("❌ Error opening AddRoleScreen: $e\n$st");

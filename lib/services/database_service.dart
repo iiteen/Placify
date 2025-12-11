@@ -91,4 +91,28 @@ class DatabaseService {
       return null;
     }
   }
+
+  // Fetch only active roles (not rejected)
+  Future<List<Role>> getActiveRoles() async {
+    final dbClient = await database;
+    final rows = await dbClient.query(
+      'roles',
+      where: 'isRejected = ?',
+      whereArgs: [0], // 0 = false
+      orderBy: 'id DESC',
+    );
+    return rows.map((e) => Role.fromMap(e)).toList();
+  }
+
+  // Fetch only rejected roles
+  Future<List<Role>> getRejectedRoles() async {
+    final dbClient = await database;
+    final rows = await dbClient.query(
+      'roles',
+      where: 'isRejected = ?',
+      whereArgs: [1], // 1 = true
+      orderBy: 'id DESC',
+    );
+    return rows.map((e) => Role.fromMap(e)).toList();
+  }
 }
