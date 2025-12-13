@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/background_logic_test.dart'; // 👈 ADD THIS
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -10,7 +12,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _controller = TextEditingController();
-  bool _loading = false;
+  bool _saving = false;
+  bool _running = false;
 
   static const _kGeminiKey = "gemini_api_key";
 
@@ -20,27 +23,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadKey();
   }
 
-  /// Load saved Gemini API key
   Future<void> _loadKey() async {
     final prefs = await SharedPreferences.getInstance();
-    final k = prefs.getString(_kGeminiKey) ?? '';
-    _controller.text = k;
+    _controller.text = prefs.getString(_kGeminiKey) ?? '';
   }
 
-  /// Save Gemini API key
   Future<void> _saveKey() async {
-    setState(() => _loading = true);
+    setState(() => _saving = true);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kGeminiKey, _controller.text.trim());
 
-    setState(() => _loading = false);
+    setState(() => _saving = false);
 
     if (!mounted) return;
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Gemini API key saved.")));
+  }
+
+  /// 🔥 RUN EMAIL PROCESSOR DIRECTLY (NO WORKMANAGER)
+  Future<void> _runNow() async {
+    setState(() => _running = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = prefs.getString(_kGeminiKey) ?? '';
+
+      if (key.isEmpty) {
+        throw Exception("Gemini API key not set");
+      }
+
+      await runEmailProcessingOnceForDebug();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email processor finished successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
   }
 
   @override
@@ -58,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ---------- API KEY ----------
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
@@ -66,11 +94,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 12),
+
+            // ---------- SAVE ----------
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _loading ? null : _saveKey,
-                child: _loading
+                onPressed: _saving ? null : _saveKey,
+                child: _saving
                     ? const SizedBox(
                         width: 18,
                         height: 18,
@@ -79,9 +109,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : const Text('Save'),
               ),
             ),
+
+            const SizedBox(height: 12),
+
+            // ---------- RUN NOW ----------
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.play_arrow),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                onPressed: _running ? null : _runNow,
+                label: _running
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text("Run Email Processor Now"),
+              ),
+            ),
+
             const SizedBox(height: 8),
             const Text(
-              'The background processor will use this key to parse emails with Gemini.',
+              'This runs the email parser immediately for testing.\n'
+              'Background scheduling will be added later.',
               style: TextStyle(fontSize: 12),
             ),
           ],

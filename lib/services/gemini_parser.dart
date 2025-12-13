@@ -65,26 +65,26 @@ RULES & EXTRACTION LOGIC
 - Prefer the most formal and complete mention.
 - Ignore names that appear only in signatures.
 
-2. ROLES
-- Identify roles from labels such as:
-  "Profile", "Profiles", "Role", "Position", "Job Description".
+2. ROLES (CRITICAL: DO NOT CONFUSE WITH BRANCHES)
+- Identify roles from labels such as: "Profile", "Profiles", "Role", "Position", "Job Description", "Designation".
 - Add every detected role to the roles array.
+- NEGATIVE CONSTRAINTS (WHAT IS NOT A ROLE):
+    - Do NOT extract "Eligible Branches", "Streams", or "Departments" as roles.
+    - IGNORE terms like: "B.Tech", "M.Tech", "Dual Degree", "CSE", "ECE", "EE", "ME", "Civil", "All Branches", "Circuital Branches".
+    - IGNORE eligibility criteria (e.g., "CGPA > 7", "No backlogs").
+- If a line reads "Profile: SDE (CSE/ECE)", the role is "SDE".
 - If a role has no associated tests, return "tests": [].
 
 3. APPLICATION DEADLINE
-- Match phrases such as:
-  "Deadline", "Last Date", "Last date to apply", "Application Deadline".
+- Match phrases such as: "Deadline", "Last Date", "Last date to apply", "Application Deadline".
 - Extract the nearest datetime to these phrases.
 
 4. PPT (PRE-PLACEMENT TALK)
-- Detect using:
-  "PPT", "Pre Placement Talk", "Pre-Placement Talk", "Corporate Presentation".
-- Only one PPT object exists.
-- PPT applies to all roles.
+- Detect using: "PPT", "Pre Placement Talk", "Pre-Placement Talk", "Corporate Presentation".
+- Only one PPT object exists; it applies to all roles.
 
 5. TESTS (ROLE-SPECIFIC LOGIC)
-- Test indicators include:
-  "Test", "Aptitude", "Coding Round", "Online Assessment", "Exam", "Assessment".
+- Test indicators: "Test", "Aptitude", "Coding Round", "Online Assessment", "Exam".
 - A test is assigned to a role only if:
     a) It appears near that role, OR
     b) It explicitly mentions that role, OR
@@ -92,28 +92,26 @@ RULES & EXTRACTION LOGIC
 - If a test applies to multiple roles and only one test is mentioned:
     → Assign the same test to ALL roles.
 
-6. DATE & TIME FORMATTING
-- Accept ANY date/time format found in the email.
-- Use the 'EMAIL RECEIVED DATETIME' to interpret relative dates like 'tomorrow', 'next Monday', 'yesterday'.
-- OUTPUT must always be absolute ISO 8601 (YYYY-MM-DDTHH:MM).
-- If only a date is provided (no time):
-      → Output YYYY-MM-DDT00:00.
-- If no valid datetime is found:
-      → Return null.
+6. DATE & TIME FORMATTING AND CLEANING
+- CORRUPTED DATA HEURISTIC:
+    - Sometimes fields are buggy and contain two dates separated by a colon.
+    - Pattern: "Label and [Wrong Date] : [Correct Date]"
+    - RULE: If a date string contains a colon ':' separating two distinct timestamps, ALWAYS select the timestamp AFTER the colon.
+    - Example: "12 Dec 2025 at 22:18 : 14 Dec 2025 at 22:18" → You MUST extract "14 Dec 2025 at 22:18".
+- Use 'EMAIL RECEIVED DATETIME' for relative dates.
+- OUTPUT: ISO 8601 (YYYY-MM-DDTHH:MM).
+- If only a date is provided (no time) → YYYY-MM-DDT00:00.
+- If no valid datetime is found → null.
 
 7. JSON STRICTNESS
 - Always output valid JSON.
 - Do not include trailing commas.
 - Missing values must be null.
 
-8. TBD (TO BE DECIDED) RULE — VERY IMPORTANT
-- If a field (deadline, PPT time, test time) contains:
-    "TBD", "To be decided", "To be determined", or "Yet to be decided":
-      → Output null for that field.
-- If BOTH a date/time AND a TBD indicator appear for the same field:
-      → Treat the datetime as invalid.
-      → Output null.
-- The presence of TBD always overrides any conflicting datetime.
+8. TBD (TO BE DECIDED) RULE — HIGHEST PRIORITY
+- If a field (deadline, PPT time, test time) contains: "TBD", "To be decided", "To be determined", "Yet to be decided", or "Later":
+    → Output null for that field.
+- The presence of TBD overrides any found datetime.
 """;
 
   Future<String> parseEmail({

@@ -16,8 +16,6 @@ class GmailService {
 
   Future<bool> signIn() async {
     try {
-      // Attempt to sign in. In background tasks this must be a silent sign-in
-      // or previously granted credentials must be present.
       _account = await _googleSignIn.signInSilently();
       _account ??= await _googleSignIn.signIn();
 
@@ -45,52 +43,23 @@ class GmailService {
     _api = null;
   }
 
-  /// Lightweight list of message ids matching a query (single page).
-  /// Keep for compatibility with existing code.
-  Future<List<gmail.Message>?> listMessageIds({
-    required String query,
-    int maxResults = 100,
-  }) async {
-    try {
-      if (_api == null) {
-        debugPrint('Gmail API not initialized. Call signIn() first.');
-        return [];
-      }
-
-      final resp = await _api!.users.messages.list(
-        'me',
-        q: query,
-        maxResults: maxResults,
-      );
-
-      return resp.messages ?? [];
-    } catch (e, st) {
-      debugPrint("❌ Gmail listMessageIds error: $e\n$st");
-      return [];
-    }
-  }
-
-  /// Fetch ALL messages (ids + threadId etc) that match the query and are
-  /// newer than the given epoch-second timestamp. This method paginates
-  /// through all pages using pageToken, so it will return *all* matching messages.
-  ///
-  /// Uses Gmail 'after:' operator with epoch seconds.
+  /// Fetch ALL messages (ids + threadId only) matching query + time.
+  /// Returns Newest -> Oldest (API default).
   Future<List<gmail.Message>> fetchMessagesSince({
-    required String
-    baseQuery, // e.g. 'from:channeli.img@iitr.ac.in subject:(...)'
+    required String baseQuery,
     required int afterEpochSeconds,
-    int pageSize = 100, // page size; Gmail allows up to 500 but 100 is safe
+    int pageSize = 100,
   }) async {
     try {
       if (_api == null) {
-        debugPrint('Gmail API not initialized. Call signIn() first.');
+        debugPrint('Gmail API not initialized.');
         return [];
       }
 
-      // Build query with 'after' (epoch seconds)
       final query = '$baseQuery after:$afterEpochSeconds';
       List<gmail.Message> results = [];
       String? pageToken;
+
       do {
         final resp = await _api!.users.messages.list(
           'me',
@@ -113,13 +82,13 @@ class GmailService {
     }
   }
 
-  /// Fetch metadata-only for a single message (headers only)
+  /// Fetch metadata + InternalDate for a single message
   Future<gmail.Message?> getMessageMetadata(String messageId) async {
     try {
-      if (_api == null) {
-        debugPrint('Gmail API not initialized. Call signIn() first.');
-        return null;
-      }
+      if (_api == null) return null;
+
+      // format: 'metadata' automatically includes internalDate (top-level)
+      // and payload.headers.
       final msg = await _api!.users.messages.get(
         'me',
         messageId,
@@ -133,15 +102,25 @@ class GmailService {
     }
   }
 
-  /// Convenience: search + fetch metadata for each hit (single-page variant)
+  /// Convenience: search + fetch metadata (single-page variant)
   Future<List<gmail.Message>> searchAndFetchMetadata({
     required String query,
     int maxResults = 20,
   }) async {
     try {
-      final ids = await listMessageIds(query: query, maxResults: maxResults);
-      if (ids == null || ids.isEmpty) return [];
+      if (_api == null) return [];
 
+      // 1. Get IDs
+      final resp = await _api!.users.messages.list(
+        'me',
+        q: query,
+        maxResults: maxResults,
+      );
+
+      final ids = resp.messages ?? [];
+      if (ids.isEmpty) return [];
+
+      // 2. Fetch details for each
       final List<gmail.Message> results = [];
       for (var m in ids) {
         if (m.id == null) continue;
@@ -155,13 +134,9 @@ class GmailService {
     }
   }
 
-  /// Fetch FULL message including body, attachments, HTML, etc.
   Future<String?> getFullMessageBody(String messageId) async {
     try {
-      if (_api == null) {
-        debugPrint('Gmail API not initialized. Call signIn() first.');
-        return null;
-      }
+      if (_api == null) return null;
 
       final msg = await _api!.users.messages.get(
         'me',
@@ -171,11 +146,9 @@ class GmailService {
 
       if (msg.payload == null) return null;
 
-      // Decode raw HTML or text
       final raw = _extractBody(msg.payload!);
       if (raw == null || raw.trim().isEmpty) return null;
 
-      // Extract ONLY mail-body content using HTML parser
       return _extractCleanMailBody(raw);
     } catch (e, st) {
       debugPrint("❌ Gmail getFullMessageBody error: $e\n$st");
@@ -183,34 +156,26 @@ class GmailService {
     }
   }
 
-  /// Recursively extract *raw* HTML/text from Gmail parts
   String? _extractBody(gmail.MessagePart part) {
     try {
-      // CASE 1: Direct body data (Base64)
       if (part.body != null && part.body!.data != null) {
         return _decodeBase64(part.body!.data!);
       }
-
-      // CASE 2: Look inside nested parts
       if (part.parts != null) {
         for (var p in part.parts!) {
           final res = _extractBody(p);
           if (res != null && res.trim().isNotEmpty) return res;
         }
       }
-
       return null;
-    } catch (e, st) {
-      debugPrint("❌ _extractBody error: $e\n$st");
+    } catch (e) {
       return null;
     }
   }
 
-  /// Decode Gmail’s URL-safe Base64
   String _decodeBase64(String input) {
     try {
       String normalized = input.replaceAll('-', '+').replaceAll('_', '/');
-
       switch (normalized.length % 4) {
         case 1:
           normalized += '===';
@@ -222,37 +187,21 @@ class GmailService {
           normalized += '=';
           break;
       }
-
       return String.fromCharCodes(base64.decode(normalized));
-    } catch (e, st) {
-      debugPrint("❌ _decodeBase64 error: $e\n$st");
+    } catch (e) {
       return '';
     }
   }
 
-  /// Extract ONLY content inside <div class="mail-body"> and clean it
   String _extractCleanMailBody(String html) {
     try {
       final document = html_parser.parse(html);
-
-      // Try to find the main content block
       final bodyDiv = document.querySelector('.mail-body');
-
-      String cleanedText;
-
-      if (bodyDiv != null) {
-        // extract ONLY mail-body plaintext
-        cleanedText = bodyDiv.text;
-      } else {
-        // fallback: use entire body but still clean
-        cleanedText = document.body?.text ?? html;
-      }
-
-      cleanedText = cleanedText.trim();
-
-      return cleanedText;
-    } catch (e, st) {
-      debugPrint("❌ _extractCleanMailBody error: $e\n$st");
+      String cleanedText = (bodyDiv != null)
+          ? bodyDiv.text
+          : (document.body?.text ?? html);
+      return cleanedText.trim();
+    } catch (e) {
       return html;
     }
   }
