@@ -4,6 +4,8 @@ import '../models/role.dart';
 import 'role_details_screen.dart';
 import 'add_role_screen.dart';
 import 'gmail_test_screen.dart';
+import 'background_controller_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,7 +59,6 @@ class _HomeScreenState extends State<HomeScreen>
       }
     });
   }
-
 
   @override
   void dispose() {
@@ -252,6 +253,35 @@ class _HomeScreenState extends State<HomeScreen>
                   .catchError((err, st) {
                     debugPrint("❌ Gmail navigation error: $err\n$st");
                   });
+            },
+          ),
+          // --------------------------
+          // NEW: Background Controller
+          // --------------------------
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: "Background Processor",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const BackgroundControllerScreen(),
+                ),
+              );
+            },
+          ),
+
+          // --------------------------
+          // NEW: Settings Screen
+          // --------------------------
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: "Settings",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
             },
           ),
         ],

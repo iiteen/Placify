@@ -18,24 +18,21 @@ subprojects {
     project.afterEvaluate {
         tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).configureEach {
             compilerOptions {
-                // --- THE UPDATED LIST ---
-                // Add any plugin names here that fail with "compileDebugJavaWithJavac (1.8)"
-                val legacyPlugins = setOf("receive_sharing_intent", "device_calendar")
+                // --- THE EXCEPTION LIST ---
+                // "device_calendar" is still on Java 1.8, so we add it here.
+                // If "receive_sharing_intent" fails later, add it to this list too.
+                val legacyPlugins = setOf("device_calendar", "receive_sharing_intent", "workmanager_android")
 
                 if (legacyPlugins.contains(project.name)) {
-                    // Force old plugins to use 1.8
+                    // Force these plugins to use 1.8 (matches their internal Java config)
                     jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
                 } else {
-                    // Force everyone else (including your app) to use 17
+                    // Force everything else (app, workmanager, etc.) to use 17
                     jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
                 }
             }
         }
     }
-}
-
-subprojects {
-    project.evaluationDependsOn(":app")
 }
 
 subprojects {

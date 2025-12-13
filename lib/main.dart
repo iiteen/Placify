@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'services/background_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize WorkManager background dispatcher
+  await BackgroundService.initialize();
+
   runApp(const MyApp());
 }
 
@@ -14,7 +20,6 @@ class MyApp extends StatelessWidget {
       title: 'Placement Tracker',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: const HomeScreen(),
-      // home: const GmailTestScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

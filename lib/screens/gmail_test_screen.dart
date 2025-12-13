@@ -91,8 +91,11 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
           debugPrint(body ?? "NO BODY FOUND");
           debugPrint("================================================");
 
-          const geminiApiKey = "YOUR_GEMINI_API_KEY";
-          final parser = GeminiParser(geminiApiKey);
+          final parser = await GeminiParser.createFromPrefs();
+          if (parser == null) {
+            debugPrint("❌ Gemini API key not set in settings.");
+            return;
+          }
 
           final parsedJsonStr = await parser.parseEmail(
             subject: subjectHeader,

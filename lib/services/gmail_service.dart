@@ -19,10 +19,7 @@ class GmailService {
       // Attempt to sign in. In background tasks this must be a silent sign-in
       // or previously granted credentials must be present.
       _account = await _googleSignIn.signInSilently();
-      if (_account == null) {
-        // If not possible silently, try interactive sign-in (foreground).
-        _account = await _googleSignIn.signIn();
-      }
+      _account ??= await _googleSignIn.signIn();
 
       if (_account == null) return false;
 

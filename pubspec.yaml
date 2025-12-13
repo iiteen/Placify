@@ -31,38 +31,31 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
-  #local db
-  sqflite: ^2.2.8+4
-  path_provider: ^2.0.15
-  path: ^1.8.3
+  # Updated to modern versions
+  sqflite: ^2.3.0
+  path_provider: ^2.1.2
+  path: ^1.9.0
 
-  #share intent handler (for receiving shared emails)
-  receive_sharing_intent: ^1.4.5
+  # UPGRADE THIS to fix the "legacy" Java 1.8 issues
+  receive_sharing_intent: ^1.8.1
 
-  #persistence for simple settings
-  shared_preferences: ^2.1.1
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.5
 
-  #for launching calendar add-intent
-  url_launcher: ^6.1.0
+  # UPGRADE THIS to fix previous errors
+  device_calendar: ^4.3.2
 
-  #reason why devs hate plugins in flutter
-  device_calendar: ^4.3.3
-
-  #gmail integration
-  google_sign_in: ^6.1.0
-  http: ^1.6.0
-  googleapis: ^11.1.0
-
-  #gemini integration
+  google_sign_in: ^6.2.1
+  http: ^1.2.0
+  googleapis: ^13.0.0
+  
   google_generative_ai: ^0.4.3
-  html: ^0.15.0
+  html: ^0.15.4
 
-  #workflow-automation
-  workmanager: ^0.5.0
+  # CRITICAL UPDATE: Fixes the "Unresolved reference" crash
+  workmanager: ^0.9.0
   
 
 dev_dependencies:

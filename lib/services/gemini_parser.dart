@@ -1,14 +1,22 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GeminiParser {
   late final GenerativeModel _model;
 
-  GeminiParser(String apiKey) {
-    _model = GenerativeModel(
-      model: "gemma-3-27b-it",
-      apiKey: apiKey,
-      // systemInstruction: Content.system(_systemPrompt),
-    );
+  static const _kGeminiKey = "gemini_api_key";
+
+  /// Factory method to create parser with API key from SharedPreferences
+  static Future<GeminiParser?> createFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = prefs.getString(_kGeminiKey);
+    if (key == null || key.isEmpty) return null;
+    return GeminiParser._internal(key);
+  }
+
+  /// Private constructor, do not call directly
+  GeminiParser._internal(String apiKey) {
+    _model = GenerativeModel(model: "gemma-3-27b-it", apiKey: apiKey);
   }
 
   static const String _systemPrompt = """
@@ -139,11 +147,9 @@ $body
     if (cleaned.startsWith("```json")) {
       cleaned = cleaned.substring(7).trim();
     }
-
     if (cleaned.startsWith("```")) {
       cleaned = cleaned.substring(3).trim();
     }
-
     if (cleaned.endsWith("```")) {
       cleaned = cleaned.substring(0, cleaned.length - 3).trim();
     }
