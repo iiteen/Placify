@@ -6,6 +6,7 @@ import 'add_role_screen.dart';
 import 'gmail_test_screen.dart';
 import 'background_controller_screen.dart';
 import 'settings_screen.dart';
+import '../services/permission_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,6 +59,8 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     });
+
+    _initPermissions();
   }
 
   @override
@@ -69,6 +72,10 @@ class _HomeScreenState extends State<HomeScreen>
   // ---------------------------
   // LOADERS
   // ---------------------------
+
+  Future<void> _initPermissions() async {
+    await PermissionService.ensurePermissions();
+  }
 
   Future<void> _loadActiveRoles() async {
     try {

@@ -1,7 +1,5 @@
 # flutter_application_1
 
-!EGL_emulation, !Choreographer, !RemoteInputConnectionImpl, !ImeTracker, !OpenGLRenderer, !TextInputPlugin, !InsetsController, !InputMethodManager
-
 A new Flutter project.
 
 ## Getting Started
@@ -19,4 +17,10 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Known Issues
 
-- Currently using `gemma-3-27b-it`. It's support might be removed in future. Need to maintain this. Also this model doesn't support instruction based chat.
+- [ ] Currently using `gemma-3-27b-it`. It's support might be removed in future. Need to maintain this. Also this model doesn't support instruction based chat.
+- [ ] Handle `permission expiration` in background tasks. It generates error in background as we cant trigger UI actions in background.
+- [ ] Need to `log whole background process`, so I can see whether it is working or not.
+
+## debug filter
+
+!EGL_emulation, !Choreographer, !RemoteInputConnectionImpl, !ImeTracker, !OpenGLRenderer, !TextInputPlugin, !InsetsController, !InputMethodManager

@@ -1,4 +1,3 @@
-// lib/services/background_service.dart
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
@@ -16,15 +15,11 @@ class BackgroundService {
   static const String _taskUniqueName = "placement_email_worker";
   static const String _taskImmediate = "placement_email_worker_now";
 
-  static GeminiRateLimiter? _rateLimiter;
-
   /// Initialize WorkManager callback dispatcher. Must be called once in main().
   static Future<void> initialize() async {
     Workmanager().initialize(
       callbackDispatcher, // <- top-level function
     );
-
-    _rateLimiter = GeminiRateLimiter(maxRequestsPerMinute: 9);
 
     debugPrint("⚙ Workmanager initialized.");
   }
@@ -97,6 +92,7 @@ void callbackDispatcher() {
       debugPrint("📬 Background job started: $task");
 
       final gmailService = GmailService();
+      final rateLimiter = GeminiRateLimiter(maxRequestsPerMinute: 5);
 
       final parser = await GeminiParser.createFromPrefs();
       if (parser == null) {
@@ -117,13 +113,13 @@ void callbackDispatcher() {
       if (lastEpoch == 0) {
         lastEpoch =
             DateTime.now()
-                .subtract(const Duration(days: 1))
+                .subtract(const Duration(days: 2))
                 .millisecondsSinceEpoch ~/
             1000;
-        debugPrint("🕒 First run → fetching last 1 days.");
+        debugPrint("🕒 First run → fetching last 2 days.");
       }
 
-      final baseQuery =
+      const baseQuery =
           'from:channeli.img@iitr.ac.in subject:("Submission Of Biodata" OR "Submission of Bio data")';
 
       List<gmail.Message> msgs = [];
@@ -132,12 +128,13 @@ void callbackDispatcher() {
         msgs = await gmailService.fetchMessagesSince(
           baseQuery: baseQuery,
           afterEpochSeconds: lastEpoch,
-          pageSize: 200,
+          pageSize: 50,
         );
-      } catch (_) {
+      } catch (e) {
+        debugPrint("⚠ fetchMessagesSince failed → fallback: $e");
         msgs = await gmailService.searchAndFetchMetadata(
           query: '$baseQuery after:$lastEpoch',
-          maxResults: 200,
+          maxResults: 50,
         );
       }
 
@@ -146,7 +143,9 @@ void callbackDispatcher() {
         return Future.value(true);
       }
 
-      msgs.sort((a, b) => _internalMillis(a).compareTo(_internalMillis(b)));
+      // Gmail returns newest → oldest
+      msgs = msgs.reversed.toList();
+      debugPrint("🔄 Processing ${msgs.length} messages (Oldest → Newest)");
 
       int maxEpochSeen = lastEpoch;
 
@@ -154,30 +153,36 @@ void callbackDispatcher() {
         try {
           if (m.id == null) continue;
           final id = m.id!;
-          await BackgroundService._rateLimiter!.acquire();
+          await rateLimiter.acquire();
 
           final meta = await gmailService.getMessageMetadata(id);
+          if (meta == null) continue;
+
+          final currentEpoch = (_internalMillis(meta) / 1000).floor();
+
           String subject = "(no subject)";
           String dateHeader = DateTime.now().toIso8601String();
 
-          if (meta?.payload?.headers != null) {
-            for (var h in meta!.payload!.headers!) {
-              final name = (h.name ?? "").toLowerCase();
-              if (name == "subject") subject = h.value ?? subject;
-              if (name == "date") dateHeader = h.value ?? dateHeader;
-            }
+          for (final h in meta.payload?.headers ?? const []) {
+            final name = (h.name ?? '').toLowerCase();
+            if (name == 'subject') subject = h.value ?? subject;
+            if (name == 'date') dateHeader = h.value ?? dateHeader;
           }
 
           final body = await gmailService.getFullMessageBody(id);
           if (body == null || body.trim().isEmpty) continue;
 
-          debugPrint("📧 Parsing: $subject");
+          debugPrint(
+            "📧 [${DateTime.fromMillisecondsSinceEpoch(currentEpoch * 1000)}] $subject\n $body",
+          );
 
           final parsedStr = await parser.parseEmail(
             subject: subject,
             body: body,
             emailReceivedDateTime: dateHeader,
           );
+
+          debugPrint(parsedStr);
 
           dynamic parsedJson;
           try {
@@ -191,11 +196,11 @@ void callbackDispatcher() {
 
           await roleSync.syncRoleFromParsedData(parsedJson);
 
-          final int internalMs = _internalMillis(m);
-          final int epochSec = (internalMs / 1000).floor();
-          if (epochSec > maxEpochSeen) maxEpochSeen = epochSec;
-        } catch (e) {
-          debugPrint("⚠ Error inside email loop: $e");
+          if (currentEpoch > maxEpochSeen) {
+            maxEpochSeen = currentEpoch;
+          }
+        } catch (e, st) {
+          debugPrint("❌ Error processing ${m.id}: $e\n$st");
         }
       }
 
@@ -214,6 +219,6 @@ void callbackDispatcher() {
 }
 
 int _internalMillis(gmail.Message? m) {
-  if (m == null || m.internalDate == null) return 0;
-  return int.tryParse(m.internalDate!) ?? 0;
+  if (m?.internalDate == null) return 0;
+  return int.tryParse(m!.internalDate!) ?? 0;
 }
