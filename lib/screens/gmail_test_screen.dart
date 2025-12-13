@@ -4,6 +4,7 @@ import 'package:googleapis/gmail/v1.dart' as gmail;
 import '../services/gmail_service.dart';
 import '../services/gemini_parser.dart';
 import '../services/role_sync_service.dart';
+import '../utils/applogger.dart';
 
 class GmailTestScreen extends StatefulWidget {
   const GmailTestScreen({super.key});
@@ -25,7 +26,7 @@ class _GmailTestScreenState extends State<GmailTestScreen> {
       if (!mounted) return;
       setState(() => _signedIn = ok);
     } catch (e, st) {
-      debugPrint("❌ Gmail sign-in failed: $e\n$st");
+      AppLogger.log("❌ Gmail sign-in failed: $e\n$st");
     }
   }
 
@@ -50,7 +51,7 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
         _loading = false;
       });
     } catch (e, st) {
-      debugPrint("❌ Gmail search failed: $e\n$st");
+      AppLogger.log("❌ Gmail search failed: $e\n$st");
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -87,13 +88,13 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
                   .value ??
               "(no subject)";
 
-          debugPrint("================ RAW EMAIL BODY ================");
-          debugPrint(body ?? "NO BODY FOUND");
-          debugPrint("================================================");
+          AppLogger.log("================ RAW EMAIL BODY ================");
+          AppLogger.log(body ?? "NO BODY FOUND");
+          AppLogger.log("================================================");
 
           final parser = await GeminiParser.createFromPrefs();
           if (parser == null) {
-            debugPrint("❌ Gemini API key not set in settings.");
+            AppLogger.log("❌ Gemini API key not set in settings.");
             return;
           }
 
@@ -103,27 +104,27 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
             emailReceivedDateTime: date,
           );
 
-          debugPrint("=============== PARSED JSON ================");
-          debugPrint(parsedJsonStr);
-          debugPrint("============================================");
+          AppLogger.log("=============== PARSED JSON ================");
+          AppLogger.log(parsedJsonStr);
+          AppLogger.log("============================================");
 
           Map<String, dynamic>? parsedData;
           try {
             parsedData = jsonDecode(parsedJsonStr) as Map<String, dynamic>;
           } catch (e) {
-            debugPrint("❌ Failed to parse Gemini JSON: $e");
+            AppLogger.log("❌ Failed to parse Gemini JSON: $e");
           }
 
           if (parsedData != null) {
             try {
               await _roleSync.syncRoleFromParsedData(parsedData);
-              debugPrint("✅ Roles synced to DB and Calendar successfully.");
+              AppLogger.log("✅ Roles synced to DB and Calendar successfully.");
             } catch (e, st) {
-              debugPrint("❌ Error syncing roles: $e\n$st");
+              AppLogger.log("❌ Error syncing roles: $e\n$st");
             }
           }
         } catch (e, st) {
-          debugPrint("❌ Error processing email: $e\n$st");
+          AppLogger.log("❌ Error processing email: $e\n$st");
         }
 
         if (mounted) setState(() => _loading = false);

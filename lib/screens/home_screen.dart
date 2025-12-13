@@ -7,6 +7,7 @@ import 'gmail_test_screen.dart';
 import 'background_controller_screen.dart';
 import 'settings_screen.dart';
 import '../services/permission_service.dart';
+import '../utils/applogger.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen>
         activeRoles = all.where((r) => !r.isRejected).toList();
       });
     } catch (e, st) {
-      debugPrint("❌ Error loading active roles: $e\n$st");
+      AppLogger.log("❌ Error loading active roles: $e\n$st");
     }
   }
 
@@ -105,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen>
         rejectedRoles = all.where((r) => r.isRejected).toList();
       });
     } catch (e, st) {
-      debugPrint("❌ Error loading rejected roles: $e\n$st");
+      AppLogger.log("❌ Error loading rejected roles: $e\n$st");
     }
   }
 
@@ -201,13 +202,13 @@ class _HomeScreenState extends State<HomeScreen>
                         }
                       }
                     } catch (e, st) {
-                      debugPrint(
+                      AppLogger.log(
                         "❌ Error handling return from RoleDetails: $e\n$st",
                       );
                     }
                   })
                   .catchError((err, st) {
-                    debugPrint(
+                    AppLogger.log(
                       "❌ Navigation error to RoleDetailsScreen: $err\n$st",
                     );
                   });
@@ -252,13 +253,13 @@ class _HomeScreenState extends State<HomeScreen>
                         }
                       }
                     } catch (e, st) {
-                      debugPrint(
+                      AppLogger.log(
                         "❌ Error handling return from GmailTestScreen: $e\n$st",
                       );
                     }
                   })
                   .catchError((err, st) {
-                    debugPrint("❌ Gmail navigation error: $err\n$st");
+                    AppLogger.log("❌ Gmail navigation error: $err\n$st");
                   });
             },
           ),
@@ -327,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen>
               }
             }
           } catch (e, st) {
-            debugPrint("❌ Error opening AddRoleScreen: $e\n$st");
+            AppLogger.log("❌ Error opening AddRoleScreen: $e\n$st");
           }
         },
       ),

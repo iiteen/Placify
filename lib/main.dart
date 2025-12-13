@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'services/background_service.dart';
+import 'utils/applogger.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize WorkManager background dispatcher
   await BackgroundService.initialize();
+  await AppLogger.init();
 
   runApp(const MyApp());
 }

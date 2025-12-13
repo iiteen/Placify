@@ -1,16 +1,16 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 
 import 'gmail_service.dart';
 import 'gemini_parser.dart';
 import 'role_sync_service.dart';
 import '../utils/processed_email_store.dart';
+import '../utils/applogger.dart';
 
 /// Call this from UI to test logic without Workmanager
 Future<void> runEmailProcessingOnceForDebug() async {
-  debugPrint("🧪 DEBUG email processor started");
+  AppLogger.log("🧪 DEBUG email processor started");
 
   final gmailService = GmailService();
   final rateLimiter = GeminiRateLimiter(maxRequestsPerMinute: 5);
@@ -18,7 +18,7 @@ Future<void> runEmailProcessingOnceForDebug() async {
   // Load Gemini parser
   final parser = await GeminiParser.createFromPrefs();
   if (parser == null) {
-    debugPrint("❌ Gemini API key missing");
+    AppLogger.log("❌ Gemini API key missing");
     return;
   }
 
@@ -27,7 +27,7 @@ Future<void> runEmailProcessingOnceForDebug() async {
   // Gmail login
   final signedIn = await gmailService.signIn();
   if (!signedIn) {
-    debugPrint("❌ Gmail sign-in failed");
+    AppLogger.log("❌ Gmail sign-in failed");
     return;
   }
 
@@ -40,7 +40,7 @@ Future<void> runEmailProcessingOnceForDebug() async {
             .subtract(const Duration(days: 2))
             .millisecondsSinceEpoch ~/
         1000;
-    debugPrint("🕒 First run → fetching last 2 day");
+    AppLogger.log("🕒 First run → fetching last 2 day");
   }
 
   final baseQuery =
@@ -55,7 +55,7 @@ Future<void> runEmailProcessingOnceForDebug() async {
       pageSize: 50,
     );
   } catch (e) {
-    debugPrint("⚠ fetchMessagesSince failed → fallback: $e");
+    AppLogger.log("⚠ fetchMessagesSince failed → fallback: $e");
     // Fallback usually not needed if fetchMessagesSince is robust, but kept for safety
     msgs = await gmailService.searchAndFetchMetadata(
       query: '$baseQuery after:$lastEpoch',
@@ -64,18 +64,18 @@ Future<void> runEmailProcessingOnceForDebug() async {
   }
 
   if (msgs.isEmpty) {
-    debugPrint("📭 No new messages found");
+    AppLogger.log("📭 No new messages found");
     return;
   }
 
-  debugPrint("📥 Fetched ${msgs.length} raw IDs (Newest First by default)");
+  AppLogger.log("📥 Fetched ${msgs.length} raw IDs (Newest First by default)");
 
   // --- CRITICAL FIX: Reverse the list to process Oldest -> Newest ---
   // The API returns Newest First. The list items do NOT have internalDate populated yet,
   // so we cannot sort by property. We must rely on the API's implicit order and reverse it.
   msgs = msgs.reversed.toList();
 
-  debugPrint("🔄 Reversed list to process Oldest First");
+  AppLogger.log("🔄 Reversed list to process Oldest First");
 
   int maxEpochSeen = lastEpoch;
 
@@ -107,11 +107,11 @@ Future<void> runEmailProcessingOnceForDebug() async {
       // 2. Get Body
       final body = await gmailService.getFullMessageBody(id);
       if (body == null || body.trim().isEmpty) {
-        debugPrint("⚠ Empty body for $id");
+        AppLogger.log("⚠ Empty body for $id");
         continue;
       }
 
-      debugPrint(
+      AppLogger.log(
         "📧 [${DateTime.fromMillisecondsSinceEpoch(currentMsgEpoch * 1000)}] Parsing: $subject \n $body",
       );
 
@@ -121,11 +121,11 @@ Future<void> runEmailProcessingOnceForDebug() async {
         emailReceivedDateTime: dateHeader,
       );
 
-      debugPrint("✅ Parsed output:\n$parsedStr");
+      AppLogger.log("✅ Parsed output:\n$parsedStr");
 
       final parsedJson = jsonDecode(parsedStr);
       if (parsedJson is! Map<String, dynamic>) {
-        debugPrint("⚠ Parsed JSON not a map");
+        AppLogger.log("⚠ Parsed JSON not a map");
         continue;
       }
 
@@ -136,7 +136,7 @@ Future<void> runEmailProcessingOnceForDebug() async {
         maxEpochSeen = currentMsgEpoch;
       }
     } catch (e, st) {
-      debugPrint("❌ Error inside email loop for ID ${m.id}: $e\n$st");
+      AppLogger.log("❌ Error inside email loop for ID ${m.id}: $e\n$st");
     }
   }
 
@@ -144,12 +144,12 @@ Future<void> runEmailProcessingOnceForDebug() async {
   if (maxEpochSeen > lastEpoch) {
     // Add +1 second to avoid refetching the exact same message next time
     await ProcessedEmailStore.setLastProcessedEpochSec(maxEpochSeen + 1);
-    debugPrint("💾 Updated lastEpoch → ${maxEpochSeen + 1}");
+    AppLogger.log("💾 Updated lastEpoch → ${maxEpochSeen + 1}");
   } else {
-    debugPrint("⏸ No newer timestamps encountered.");
+    AppLogger.log("⏸ No newer timestamps encountered.");
   }
 
-  debugPrint("✅ DEBUG email processor finished");
+  AppLogger.log("✅ DEBUG email processor finished");
 }
 
 /// Helpers
@@ -175,7 +175,7 @@ class GeminiRateLimiter {
     if (_calls.length >= maxRequestsPerMinute) {
       final wait = 60 - now.difference(_calls.first).inSeconds + 1;
       if (wait > 0) {
-        debugPrint(
+        AppLogger.log(
           "⏳ Rate limit hit (${_calls.length} calls) → waiting $wait sec",
         );
         await Future.delayed(Duration(seconds: wait));

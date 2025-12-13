@@ -1,10 +1,10 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:html/parser.dart' as html_parser;
 
 import '../utils/google_http_client.dart';
+import '../utils/applogger.dart';
 
 class GmailService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -24,10 +24,10 @@ class GmailService {
       final headers = await _account!.authHeaders;
       final client = GoogleHttpClient(headers);
       _api = gmail.GmailApi(client);
-      debugPrint('✅ Signed in as: ${_account!.email}');
+      AppLogger.log('✅ Signed in as: ${_account!.email}');
       return true;
     } catch (e, st) {
-      debugPrint("❌ Gmail signIn error: $e\n$st");
+      AppLogger.log("❌ Gmail signIn error: $e\n$st");
       _api = null;
       return false;
     }
@@ -37,7 +37,7 @@ class GmailService {
     try {
       await _googleSignIn.signOut();
     } catch (e, st) {
-      debugPrint("❌ Gmail signOut error: $e\n$st");
+      AppLogger.log("❌ Gmail signOut error: $e\n$st");
     }
     _account = null;
     _api = null;
@@ -52,7 +52,7 @@ class GmailService {
   }) async {
     try {
       if (_api == null) {
-        debugPrint('Gmail API not initialized.');
+        AppLogger.log('Gmail API not initialized.');
         return [];
       }
 
@@ -77,7 +77,7 @@ class GmailService {
 
       return results;
     } catch (e, st) {
-      debugPrint("❌ Gmail fetchMessagesSince error: $e\n$st");
+      AppLogger.log("❌ Gmail fetchMessagesSince error: $e\n$st");
       return [];
     }
   }
@@ -97,7 +97,7 @@ class GmailService {
       );
       return msg;
     } catch (e, st) {
-      debugPrint("❌ Gmail getMessageMetadata error: $e\n$st");
+      AppLogger.log("❌ Gmail getMessageMetadata error: $e\n$st");
       return null;
     }
   }
@@ -129,7 +129,7 @@ class GmailService {
       }
       return results;
     } catch (e, st) {
-      debugPrint("❌ Gmail searchAndFetchMetadata error: $e\n$st");
+      AppLogger.log("❌ Gmail searchAndFetchMetadata error: $e\n$st");
       return [];
     }
   }
@@ -151,7 +151,7 @@ class GmailService {
 
       return _extractCleanMailBody(raw);
     } catch (e, st) {
-      debugPrint("❌ Gmail getFullMessageBody error: $e\n$st");
+      AppLogger.log("❌ Gmail getFullMessageBody error: $e\n$st");
       return null;
     }
   }

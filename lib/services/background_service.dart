@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 
@@ -10,6 +9,7 @@ import 'gmail_service.dart';
 import 'gemini_parser.dart';
 import 'role_sync_service.dart';
 import '../utils/processed_email_store.dart';
+import '../utils/applogger.dart';
 
 class BackgroundService {
   static const String _taskUniqueName = "placement_email_worker";
@@ -21,7 +21,7 @@ class BackgroundService {
       callbackDispatcher, // <- top-level function
     );
 
-    debugPrint("⚙ Workmanager initialized.");
+    AppLogger.log("⚙ Workmanager initialized.");
   }
 
   /// Start periodic task
@@ -36,7 +36,7 @@ class BackgroundService {
     );
 
     await ProcessedEmailStore.setBackgroundRunning(true);
-    debugPrint("🔁 Background periodic task scheduled.");
+    AppLogger.log("🔁 Background periodic task scheduled.");
   }
 
   /// Trigger one-off task immediately
@@ -47,14 +47,14 @@ class BackgroundService {
       existingWorkPolicy: ExistingWorkPolicy.replace,
       constraints: Constraints(networkType: NetworkType.connected),
     );
-    debugPrint("🚀 Immediate background task triggered.");
+    AppLogger.log("🚀 Immediate background task triggered.");
   }
 
   /// Stop periodic task
   static Future<void> stop() async {
     await Workmanager().cancelByUniqueName(_taskUniqueName);
     await ProcessedEmailStore.setBackgroundRunning(false);
-    debugPrint("🛑 Background job cancelled.");
+    AppLogger.log("🛑 Background job cancelled.");
   }
 
   static Future<bool> isRunning() => ProcessedEmailStore.isBackgroundRunning();
@@ -76,7 +76,7 @@ class GeminiRateLimiter {
 
     if (_queue.length >= maxRequestsPerMinute) {
       final wait = 60 - now.difference(_queue.first).inSeconds + 1;
-      debugPrint("⏳ Rate limit hit — waiting $wait sec");
+      AppLogger.log("⏳ Rate limit hit — waiting $wait sec");
       await Future.delayed(Duration(seconds: wait));
     }
 
@@ -89,14 +89,14 @@ class GeminiRateLimiter {
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
-      debugPrint("📬 Background job started: $task");
+      AppLogger.log("📬 Background job started: $task");
 
       final gmailService = GmailService();
       final rateLimiter = GeminiRateLimiter(maxRequestsPerMinute: 5);
 
       final parser = await GeminiParser.createFromPrefs();
       if (parser == null) {
-        debugPrint("❌ GeminiParser missing API key. Skipping.");
+        AppLogger.log("❌ GeminiParser missing API key. Skipping.");
         return Future.value(true);
       }
 
@@ -104,7 +104,7 @@ void callbackDispatcher() {
 
       final signedIn = await gmailService.signIn();
       if (!signedIn) {
-        debugPrint("❌ Gmail background sign-in failed.");
+        AppLogger.log("❌ Gmail background sign-in failed.");
         return Future.value(true);
       }
 
@@ -116,7 +116,7 @@ void callbackDispatcher() {
                 .subtract(const Duration(days: 2))
                 .millisecondsSinceEpoch ~/
             1000;
-        debugPrint("🕒 First run → fetching last 2 days.");
+        AppLogger.log("🕒 First run → fetching last 2 days.");
       }
 
       const baseQuery =
@@ -131,7 +131,7 @@ void callbackDispatcher() {
           pageSize: 50,
         );
       } catch (e) {
-        debugPrint("⚠ fetchMessagesSince failed → fallback: $e");
+        AppLogger.log("⚠ fetchMessagesSince failed → fallback: $e");
         msgs = await gmailService.searchAndFetchMetadata(
           query: '$baseQuery after:$lastEpoch',
           maxResults: 50,
@@ -139,13 +139,13 @@ void callbackDispatcher() {
       }
 
       if (msgs.isEmpty) {
-        debugPrint("📭 No new messages found.");
+        AppLogger.log("📭 No new messages found.");
         return Future.value(true);
       }
 
       // Gmail returns newest → oldest
       msgs = msgs.reversed.toList();
-      debugPrint("🔄 Processing ${msgs.length} messages (Oldest → Newest)");
+      AppLogger.log("🔄 Processing ${msgs.length} messages (Oldest → Newest)");
 
       int maxEpochSeen = lastEpoch;
 
@@ -172,7 +172,7 @@ void callbackDispatcher() {
           final body = await gmailService.getFullMessageBody(id);
           if (body == null || body.trim().isEmpty) continue;
 
-          debugPrint(
+          AppLogger.log(
             "📧 [${DateTime.fromMillisecondsSinceEpoch(currentEpoch * 1000)}] $subject\n $body",
           );
 
@@ -182,13 +182,13 @@ void callbackDispatcher() {
             emailReceivedDateTime: dateHeader,
           );
 
-          debugPrint(parsedStr);
+          AppLogger.log(parsedStr);
 
           dynamic parsedJson;
           try {
             parsedJson = jsonDecode(parsedStr);
           } catch (e) {
-            debugPrint("❌ JSON decode failed for $id: $e");
+            AppLogger.log("❌ JSON decode failed for $id: $e");
             continue;
           }
 
@@ -200,19 +200,19 @@ void callbackDispatcher() {
             maxEpochSeen = currentEpoch;
           }
         } catch (e, st) {
-          debugPrint("❌ Error processing ${m.id}: $e\n$st");
+          AppLogger.log("❌ Error processing ${m.id}: $e\n$st");
         }
       }
 
       if (maxEpochSeen > lastEpoch) {
         await ProcessedEmailStore.setLastProcessedEpochSec(maxEpochSeen + 1);
-        debugPrint("🔄 Updated lastEpoch → ${maxEpochSeen + 1}");
+        AppLogger.log("🔄 Updated lastEpoch → ${maxEpochSeen + 1}");
       }
 
-      debugPrint("✅ Background worker finished.");
+      AppLogger.log("✅ Background worker finished.");
       return Future.value(true);
     } catch (e, st) {
-      debugPrint("❌ Background fatal error: $e\n$st");
+      AppLogger.log("❌ Background fatal error: $e\n$st");
       return Future.value(true);
     }
   });

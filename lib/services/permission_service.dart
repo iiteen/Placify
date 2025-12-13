@@ -1,7 +1,6 @@
-import 'package:flutter/foundation.dart';
-
 import 'gmail_service.dart';
 import 'calendar_service.dart';
+import '../utils/applogger.dart';
 
 class PermissionService {
   /// Called on app startup
@@ -9,7 +8,7 @@ class PermissionService {
     var ok = await _verifySilently();
     if (ok) return;
 
-    debugPrint("⚠ Couldnt get permissions");
+    AppLogger.log("⚠ Couldnt get permissions");
   }
 
   /// Silent check without UI

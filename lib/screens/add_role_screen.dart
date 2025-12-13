@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../services/database_service.dart';
 import '../services/calendar_service.dart';
+import '../utils/applogger.dart';
 
 class AddRoleScreen extends StatefulWidget {
   const AddRoleScreen({super.key});
@@ -54,7 +55,7 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
       if (!mounted) return;
       setState(() => setter(dt));
     } catch (e, st) {
-      debugPrint("❌ Error picking date/time: $e\n$st");
+      AppLogger.log("❌ Error picking date/time: $e\n$st");
     }
   }
 
@@ -117,9 +118,9 @@ class _AddRoleScreenState extends State<AddRoleScreen> {
       // persist event IDs back to DB
       await db.updateRole(role);
 
-      debugPrint("✅ Role added and calendar events synced.");
+      AppLogger.log("✅ Role added and calendar events synced.");
     } catch (e, st) {
-      debugPrint("❌ Error saving role or syncing calendar: $e\n$st");
+      AppLogger.log("❌ Error saving role or syncing calendar: $e\n$st");
     }
 
     if (!mounted) return;

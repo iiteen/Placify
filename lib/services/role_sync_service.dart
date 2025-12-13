@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import '../services/database_service.dart';
 import '../services/calendar_service.dart';
 import '../models/role.dart';
+import '../utils/applogger.dart';
 
 class RoleSyncService {
   final DatabaseService _db = DatabaseService();
@@ -16,7 +16,9 @@ class RoleSyncService {
       final rolesData = parsedData['roles'];
 
       if (companyName == null || companyName.isEmpty || rolesData == null) {
-        debugPrint("⚠️ No valid company name or roles found in parsed data.");
+        AppLogger.log(
+          "⚠️ No valid company name or roles found in parsed data.",
+        );
         return;
       }
 
@@ -55,7 +57,7 @@ class RoleSyncService {
 
           await _db.insertRole(role);
 
-          debugPrint(
+          AppLogger.log(
             "✅ Inserted new role: ${role.companyName} — ${role.roleName}",
           );
 
@@ -63,7 +65,7 @@ class RoleSyncService {
           try {
             await _calendar.syncRoleEvents(role);
           } catch (e, st) {
-            debugPrint("❌ Calendar sync failed for new role: $e\n$st");
+            AppLogger.log("❌ Calendar sync failed for new role: $e\n$st");
           }
 
           // Save event IDs
@@ -87,27 +89,29 @@ class RoleSyncService {
 
           if (needsUpdate) {
             await _db.updateRole(role);
-            debugPrint(
+            AppLogger.log(
               "♻️ Updated role: ${role.companyName} — ${role.roleName}",
             );
 
             try {
               await _calendar.syncRoleEvents(role);
             } catch (e, st) {
-              debugPrint("❌ Calendar sync failed for existing role: $e\n$st");
+              AppLogger.log(
+                "❌ Calendar sync failed for existing role: $e\n$st",
+              );
             }
 
             // Save updated event IDs
             await _db.updateRole(role);
           } else {
-            debugPrint(
+            AppLogger.log(
               "ℹ️ No changes detected for role: ${role.companyName} — ${role.roleName}",
             );
           }
         }
       }
     } catch (e, st) {
-      debugPrint("❌ RoleSyncService sync error: $e\n$st");
+      AppLogger.log("❌ RoleSyncService sync error: $e\n$st");
     }
   }
 }

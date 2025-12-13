@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../services/database_service.dart';
 import '../services/calendar_service.dart';
+import '../utils/applogger.dart';
 
 class RoleDetailsScreen extends StatefulWidget {
   final Role role;
@@ -67,7 +68,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
       if (!mounted) return;
       setState(() => setter(dt));
     } catch (e, st) {
-      debugPrint("❌ Error picking date/time: $e\n$st");
+      AppLogger.log("❌ Error picking date/time: $e\n$st");
     }
   }
 
@@ -118,7 +119,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e, st) {
-      debugPrint("❌ Error saving role: $e\n$st");
+      AppLogger.log("❌ Error saving role: $e\n$st");
     }
   }
 
@@ -129,7 +130,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
         editableRole.isRejected = !interested;
       });
     } catch (e, st) {
-      debugPrint("❌ Error toggling interested: $e\n$st");
+      AppLogger.log("❌ Error toggling interested: $e\n$st");
     }
   }
 
@@ -140,7 +141,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
         editableRole.isInterested = !rejected;
       });
     } catch (e, st) {
-      debugPrint("❌ Error toggling rejected: $e\n$st");
+      AppLogger.log("❌ Error toggling rejected: $e\n$st");
     }
   }
 
@@ -178,7 +179,7 @@ class _RoleDetailsScreenState extends State<RoleDetailsScreen> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e, st) {
-      debugPrint("❌ Error deleting role: $e\n$st");
+      AppLogger.log("❌ Error deleting role: $e\n$st");
     }
   }
 
