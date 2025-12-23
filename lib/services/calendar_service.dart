@@ -1,6 +1,6 @@
 import 'package:device_calendar/device_calendar.dart';
-import 'package:flutter/foundation.dart';
 import '../models/role.dart';
+import '../utils/applogger.dart';
 
 class CalendarService {
   final DeviceCalendarPlugin _calendar = DeviceCalendarPlugin();
@@ -10,7 +10,7 @@ class CalendarService {
     try {
       final perms = await _calendar.requestPermissions();
       if (!(perms.isSuccess && perms.data == true)) {
-        debugPrint(
+        AppLogger.log(
           "⚠️ Calendar permission NOT granted. Events cannot be created.",
         );
         return;
@@ -20,7 +20,7 @@ class CalendarService {
       final calendars = calendarsResult.data;
 
       if (calendars == null || calendars.isEmpty) {
-        debugPrint("⚠️ No calendars found on this device.");
+        AppLogger.log("⚠️ No calendars found on this device.");
         return;
       }
 
@@ -30,28 +30,10 @@ class CalendarService {
       );
 
       _calendarId = writable.id;
-      debugPrint("✅ Using calendar: ${writable.name}");
+      AppLogger.log("✅ Using calendar: ${writable.name}");
     } catch (e, st) {
-      debugPrint("❌ Failed to initialize calendar: $e\n$st");
+      AppLogger.log("❌ Failed to initialize calendar: $e\n$st");
     }
-  }
-
-  List<Reminder> _buildSmartReminder(DateTime eventStart) {
-    final now = DateTime.now();
-
-    final preferred = eventStart.subtract(const Duration(minutes: 30));
-    if (preferred.isAfter(now)) {
-      final mins = eventStart.difference(preferred).inMinutes;
-      return [Reminder(minutes: mins)];
-    }
-
-    final fiveMin = now.add(const Duration(minutes: 5));
-    if (fiveMin.isBefore(eventStart)) {
-      final mins = eventStart.difference(fiveMin).inMinutes;
-      return [Reminder(minutes: mins)];
-    }
-
-    return [];
   }
 
   String _styledEventType(String t) {
@@ -71,7 +53,6 @@ class CalendarService {
     try {
       final start = TZDateTime.from(date, local);
       final end = start.add(const Duration(hours: 1));
-      final reminders = _buildSmartReminder(start);
 
       final event = Event(
         _calendarId!,
@@ -79,19 +60,17 @@ class CalendarService {
             "${_styledEventType(eventType)} — ${role.companyName} (${role.roleName})",
         start: start,
         end: end,
-        // TODO: handle this later, what reminder to go with
-        // reminders: reminders,
       );
 
       final res = await _calendar.createOrUpdateEvent(event);
       if (res?.data != null) {
-        debugPrint("✨ Created $eventType event → ID: ${res!.data}");
+        AppLogger.log("✨ Created $eventType event → ID: ${res!.data}");
       } else {
-        debugPrint("❌ Failed to create $eventType event");
+        AppLogger.log("❌ Failed to create $eventType event");
       }
       return res?.data;
     } catch (e, st) {
-      debugPrint("❌ Error creating $eventType event: $e\n$st");
+      AppLogger.log("❌ Error creating $eventType event: $e\n$st");
       return null;
     }
   }
@@ -100,9 +79,9 @@ class CalendarService {
     if (_calendarId == null || eventId == null || eventId.isEmpty) return;
     try {
       await _calendar.deleteEvent(_calendarId!, eventId);
-      debugPrint("🗑 Deleted event ID: $eventId");
+      AppLogger.log("🗑 Deleted event ID: $eventId");
     } catch (e, st) {
-      debugPrint("❌ Failed to delete event $eventId: $e\n$st");
+      AppLogger.log("❌ Failed to delete event $eventId: $e\n$st");
     }
   }
 
@@ -116,7 +95,7 @@ class CalendarService {
     try {
       // CASE 1: date removed → delete event
       if (date == null) {
-        debugPrint("🗑 Skipping $type event because date was cleared.");
+        AppLogger.log("🗑 Skipping $type event because date was cleared.");
         // await _deleteEvent(eventId);
         setEventId(null);
         return;
@@ -126,7 +105,7 @@ class CalendarService {
       bool needsRecreate = false;
       if (eventId != null && eventId.isNotEmpty) {
         // We could track old date in DB if needed, or just always recreate
-        debugPrint("♻️ Deleting old $type event before recreating...");
+        AppLogger.log("♻️ Deleting old $type event before recreating...");
         await _deleteEvent(eventId);
         setEventId(null);
         needsRecreate = true;
@@ -139,13 +118,13 @@ class CalendarService {
         final newId = await _createEvent(role, type, date);
         if (newId != null && newId.isNotEmpty) {
           setEventId(newId);
-          debugPrint("✨ Created $type event → ID: $newId");
+          AppLogger.log("✨ Created $type event → ID: $newId");
         } else {
-          debugPrint("❌ Failed to create $type event.");
+          AppLogger.log("❌ Failed to create $type event.");
         }
       }
     } catch (e, st) {
-      debugPrint("❌ Error syncing $type event: $e\n$st");
+      AppLogger.log("❌ Error syncing $type event: $e\n$st");
     }
   }
 
@@ -155,7 +134,7 @@ class CalendarService {
       if (_calendarId == null) return;
 
       if (role.isRejected) {
-        debugPrint("🚫 Role rejected → deleting all events...");
+        AppLogger.log("🚫 Role rejected → deleting all events...");
         await _deleteEvent(role.pptEventId);
         await _deleteEvent(role.testEventId);
         await _deleteEvent(role.applicationDeadlineEventId);
@@ -190,7 +169,7 @@ class CalendarService {
         setEventId: (id) => role.applicationDeadlineEventId = id,
       );
     } catch (e, st) {
-      debugPrint("❌ Failed to sync role events: $e\n$st");
+      AppLogger.log("❌ Failed to sync role events: $e\n$st");
     }
   }
 }

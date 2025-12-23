@@ -26,7 +26,7 @@ Your task is to extract structured placement information from extremely inconsis
 
 IMPORTANT:
 - The email was received at the datetime provided in the 'EMAIL RECEIVED DATETIME' field.
-- Use this as reference to interpret relative date terms in the email, such as 'tomorrow', 'next Monday', 'yesterday', 'in 3 days', etc.
+- Use this as reference to interpret relative date terms.
 - Always convert all dates/times to absolute ISO 8601 format (YYYY-MM-DDTHH:MM) in your output.
 
 OUTPUT REQUIREMENTS:
@@ -57,61 +57,70 @@ FINAL JSON STRUCTURE:
 }
 
 =====================================
+CRITICAL EXTRACTION EXAMPLES (FEW-SHOT)
+=====================================
+Input Line: "PPT Date & 15 December 2025 at 11:44: 16th December 2025, 11 AM"
+Correction: Ignore "15 December 2025 at 11:44". Extract only "16th December 2025, 11 AM".
+Output: "2025-12-16T11:00"
+
+Input Line: "Test Date & 01 Jan 2025 at 09:00: 05 Jan 2025, 5 PM"
+Correction: Ignore "01 Jan...". Extract "05 Jan 2025, 5 PM".
+Output: "2025-01-05T17:00"
+
+Input Line: "Profile: Software Engineer\nEligibility:\nB.Tech. (Computer Science)\nB.Tech. (Electrical Engineering)\nM.Tech. (V.L.S.I)"
+Correction: "Software Engineer" IS a role. The B.Tech/M.Tech lines are ELIGIBILITY. Do not extract branches as roles.
+Output Roles: [{"name": "Software Engineer", "tests": []}]
+
+=====================================
 RULES & EXTRACTION LOGIC
 =====================================
 
 1. COMPANY NAME
 - Extract from any part of the email.
 - Prefer the most formal and complete mention.
-- Ignore names that appear only in signatures.
 
-2. ROLES (CRITICAL: DO NOT CONFUSE WITH BRANCHES)
-- Identify roles from labels such as: "Profile", "Profiles", "Role", "Position", "Job Description", "Designation".
-- Add every detected role to the roles array.
-- NEGATIVE CONSTRAINTS (WHAT IS NOT A ROLE):
-    - Do NOT extract "Eligible Branches", "Streams", or "Departments" as roles.
-    - IGNORE terms like: "B.Tech", "M.Tech", "Dual Degree", "CSE", "ECE", "EE", "ME", "Civil", "All Branches", "Circuital Branches".
-    - IGNORE eligibility criteria (e.g., "CGPA > 7", "No backlogs").
-- If a line reads "Profile: SDE (CSE/ECE)", the role is "SDE".
+2. ROLES (STRICT BLOCKLIST)
+- Identify roles from labels: "Profile", "Role", "Position", "Designation".
+- **CRITICAL NEGATIVE CONSTRAINTS (WHAT IS NOT A ROLE)**:
+    - NEVER extract academic degrees or branches as roles.
+    - IF A LINE CONTAINS: "B.Tech", "M.Tech", "B.Arch", "B.Des", "Dual Degree", "M.Sc", "PhD", "BS-MS", "Integrated M.Tech" -> **DISCARD IT IMMEDIATELY**.
+    - IF A LINE CONTAINS: "Civil Engineering", "Computer Science", "Electrical Engineering", "Mechanical", "Production" -> **DISCARD IT IMMEDIATELY** (unless explicitly preceded by 'Profile:').
+    - Do NOT extract "Eligible Branches", "Streams", "Departments" as roles.
+- Example: "Profile: SDE (CSE/ECE)" -> Role is "SDE".
+- Example: "B.Tech (CSE)" appearing in a list -> IGNORE completely.
 - If a role has no associated tests, return "tests": [].
 
 3. APPLICATION DEADLINE
-- Match phrases such as: "Deadline", "Last Date", "Last date to apply", "Application Deadline".
-- Extract the nearest datetime to these phrases.
+- Match phrases: "Deadline", "Last Date", "Application Deadline".
 
 4. PPT (PRE-PLACEMENT TALK)
-- Detect using: "PPT", "Pre Placement Talk", "Pre-Placement Talk", "Corporate Presentation".
-- Only one PPT object exists; it applies to all roles.
+- Detect using: "PPT", "Pre-Placement Talk", "Corporate Presentation".
+- Only one PPT object exists.
 
-5. TESTS (ROLE-SPECIFIC LOGIC)
-- Test indicators: "Test", "Aptitude", "Coding Round", "Online Assessment", "Exam".
+5. TESTS (STRICT DEFINITION)
+- Test indicators: "Test", "Aptitude", "Coding Round", "Online Assessment", "Exam", "OA".
+- NEGATIVE CONSTRAINTS (WHAT IS NOT A TEST):
+    - STRICTLY IGNORE "Interviews", "Personal Interview", "PI", "Technical Interview", "HR Round".
+    - STRICTLY IGNORE "Resume-Based Shortlisting", "Resume Shortlisting", "Shortlisting", "CV Selection".
+    - STRICTLY IGNORE "Group Discussion", "GD".
+    - Do NOT add these to the 'tests' array. If an event falls into these categories, discard it.
 - A test is assigned to a role only if:
     a) It appears near that role, OR
-    b) It explicitly mentions that role, OR
-    c) Different roles have different test timings.
-- If a test applies to multiple roles and only one test is mentioned:
-    → Assign the same test to ALL roles.
+    b) It explicitly mentions that role.
+- If a test line is generic, assign it to ALL roles.
 
-6. DATE & TIME FORMATTING AND CLEANING
-- CORRUPTED DATA HEURISTIC:
-    - Sometimes fields are buggy and contain two dates separated by a colon.
-    - Pattern: "Label and [Wrong Date] : [Correct Date]"
-    - RULE: If a date string contains a colon ':' separating two distinct timestamps, ALWAYS select the timestamp AFTER the colon.
-    - Example: "12 Dec 2025 at 22:18 : 14 Dec 2025 at 22:18" → You MUST extract "14 Dec 2025 at 22:18".
-- Use 'EMAIL RECEIVED DATETIME' for relative dates.
-- OUTPUT: ISO 8601 (YYYY-MM-DDTHH:MM).
-- If only a date is provided (no time) → YYYY-MM-DDT00:00.
-- If no valid datetime is found → null.
+6. DATE & TIME CLEANING (STRICT)
+- CORRUPTED DATA PATTERN: "Label & [Garbage Date] : [Correct Date]"
+- RULE: If a line contains the symbol '&' followed by a date/time, and then a colon ':', you must IGNORE everything before the colon.
+- The text between '&' and ':' is a system update timestamp and MUST be discarded.
+- ONLY extract the date and time found to the RIGHT of the colon.
+- Example: "Test Date & 15 Dec at 10:00 : 18 Dec at 2 PM" -> Result must be 18th Dec at 2 PM.
 
 7. JSON STRICTNESS
-- Always output valid JSON.
-- Do not include trailing commas.
-- Missing values must be null.
+- No trailing commas. Missing values must be null.
 
-8. TBD (TO BE DECIDED) RULE — HIGHEST PRIORITY
-- If a field (deadline, PPT time, test time) contains: "TBD", "To be decided", "To be determined", "Yet to be decided", or "Later":
-    → Output null for that field.
-- The presence of TBD overrides any found datetime.
+8. TBD RULE
+- If a field says "TBD", "To be decided", or "Later" -> Output null.
 """;
 
   Future<String> parseEmail({
