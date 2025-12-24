@@ -28,8 +28,8 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE roles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        companyName TEXT NOT NULL,
-        roleName TEXT NOT NULL,
+        companyName TEXT NOT NULL COLLATE NOCASE,
+        roleName TEXT NOT NULL COLLATE NOCASE,
         pptDate TEXT,
         testDate TEXT,
         applicationDeadline TEXT,
