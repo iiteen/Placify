@@ -149,6 +149,16 @@ class GmailService {
       final raw = _extractBody(msg.payload!);
       if (raw == null || raw.trim().isEmpty) return null;
 
+      AppLogger.log("================ HTML Content ================");
+      AppLogger.log(raw);
+      AppLogger.log("================================");
+
+      //Important check
+      // Case-insensitive check for the phrase "open in noticeboard" inside HTML content
+      if (!_containsNoticeboardLink(raw)) {
+        return null; // Skip this email if it doesn't contain the phrase
+      }
+
       return _extractCleanMailBody(raw);
     } catch (e, st) {
       AppLogger.log("❌ Gmail getFullMessageBody error: $e\n$st");
@@ -193,16 +203,69 @@ class GmailService {
     }
   }
 
-  String _extractCleanMailBody(String html) {
+  Future<String> _extractCleanMailBody(String html) async {
+    final cleanedHtml = await removeEnrollmentTables(html) ?? html;
     try {
-      final document = html_parser.parse(html);
+      final document = html_parser.parse(cleanedHtml);
       final bodyDiv = document.querySelector('.mail-body');
-      String cleanedText = (bodyDiv != null)
-          ? bodyDiv.text
-          : (document.body?.text ?? html);
-      return cleanedText.trim();
+      if (bodyDiv == null) {
+        return document.body?.text.trim() ?? cleanedHtml;
+      }
+
+      // Replace <br> and <br /> with newline
+      bodyDiv.querySelectorAll('br').forEach((br) {
+        br.replaceWith(html_parser.parse('<span>\n</span>').body!.firstChild!);
+      });
+
+      return bodyDiv.text.trim();
     } catch (e) {
-      return html;
+      return cleanedHtml;
     }
+  }
+
+  Future<String?> removeEnrollmentTables(String rawEmailContent) async {
+    try {
+      // Parse the raw HTML content into a document object model (DOM)
+      final document = html_parser.parse(rawEmailContent);
+
+      // Find all the tables in the document
+      final tables = document.getElementsByTagName('table');
+
+      // Loop through each table and check if it contains "enrollment"
+      for (var table in tables) {
+        // Find all headers (either <th> or <td>) in the table
+        final headers =
+            table.getElementsByTagName('th') + table.getElementsByTagName('td');
+
+        // Check if any of the headers contain the word "enrollment" (case insensitive)
+        bool containsEnrollment = false;
+        for (var header in headers) {
+          if (header.text.toLowerCase().contains('enrollment')) {
+            containsEnrollment = true;
+            break; // Stop as soon as we find "enrollment"
+          }
+        }
+
+        // If the table contains "enrollment", remove it from the document
+        if (containsEnrollment) {
+          table.remove();
+        }
+      }
+
+      // Return the modified HTML without the unwanted tables
+      return document.outerHtml; // Convert the modified DOM back to HTML
+    } catch (e) {
+      AppLogger.log("❌ Error while removing enrollment tables: $e");
+      return rawEmailContent;
+    }
+  }
+
+  // Utility function to check for "open in noticeboard" within the raw HTML content
+  bool _containsNoticeboardLink(String rawEmailContent) {
+    // Regular expression to look for the phrase "open in noticeboard" (case-insensitive)
+    final regex = RegExp(r'open\s+in\s+noticeboard', caseSensitive: false);
+
+    // Check if the phrase is present in the raw HTML content (with or without tags)
+    return regex.hasMatch(rawEmailContent);
   }
 }
