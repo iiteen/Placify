@@ -110,6 +110,20 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  Future<void> _handlePullToRefresh(int tabIndex) async {
+    refreshActive = true;
+    refreshRejected = true;
+
+    if (tabIndex == 0) {
+      await _loadActiveRoles();
+      refreshActive = false;
+    } else {
+      await _loadRejectedRoles();
+      refreshRejected = false;
+    }
+  }
+
+
   // ---------------------------
   // UI HELPERS
   // ---------------------------
@@ -153,69 +167,83 @@ class _HomeScreenState extends State<HomeScreen>
     return out.join(" • ");
   }
 
-  Widget _buildRoleList(List<Role> roles) {
-    if (roles.isEmpty) {
-      return const Center(
-        child: Text("No roles in this section", style: TextStyle(fontSize: 16)),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: roles.length,
-      itemBuilder: (context, index) {
-        final role = roles[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          color: _statusColor(role),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
-          child: ListTile(
-            title: Text(
-              "${role.companyName} — ${role.roleName}",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(_deadlineText(role)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.push<bool>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RoleDetailsScreen(role: role),
+  Widget _buildRoleList(List<Role> roles, int tabIndex) {
+    return RefreshIndicator(
+      onRefresh: () => _handlePullToRefresh(tabIndex),
+      child: roles.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(height: 200),
+                Center(
+                  child: Text(
+                    "No roles in this section",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: roles.length,
+              itemBuilder: (context, index) {
+                final role = roles[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  color: _statusColor(role),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                  child: ListTile(
+                    title: Text(
+                      "${role.companyName} — ${role.roleName}",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  )
-                  .then((changed) async {
-                    try {
-                      if (changed == true) {
-                        // mark both tabs for refresh
-                        refreshActive = true;
-                        refreshRejected = true;
+                    subtitle: Text(_deadlineText(role)),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => RoleDetailsScreen(role: role),
+                            ),
+                          )
+                          .then((changed) async {
+                            try {
+                              if (changed == true) {
+                                // mark both tabs for refresh
+                                refreshActive = true;
+                                refreshRejected = true;
 
-                        // Immediately reload the visible tab so user sees updates
-                        if (_tabController.index == 0) {
-                          await _loadActiveRoles();
-                          refreshActive = false;
-                        } else if (_tabController.index == 1) {
-                          await _loadRejectedRoles();
-                          refreshRejected = false;
-                        }
-                      }
-                    } catch (e, st) {
-                      AppLogger.log(
-                        "❌ Error handling return from RoleDetails: $e\n$st",
-                      );
-                    }
-                  })
-                  .catchError((err, st) {
-                    AppLogger.log(
-                      "❌ Navigation error to RoleDetailsScreen: $err\n$st",
-                    );
-                  });
-            },
-          ),
-        );
-      },
+                                // Immediately reload the visible tab so user sees updates
+                                if (_tabController.index == 0) {
+                                  await _loadActiveRoles();
+                                  refreshActive = false;
+                                } else if (_tabController.index == 1) {
+                                  await _loadRejectedRoles();
+                                  refreshRejected = false;
+                                }
+                              }
+                            } catch (e, st) {
+                              AppLogger.log(
+                                "❌ Error handling return from RoleDetails: $e\n$st",
+                              );
+                            }
+                          })
+                          .catchError((err, st) {
+                            AppLogger.log(
+                              "❌ Navigation error to RoleDetailsScreen: $err\n$st",
+                            );
+                          });
+                    },
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -303,7 +331,10 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildRoleList(activeRoles), _buildRoleList(rejectedRoles)],
+        children: [
+          _buildRoleList(activeRoles, 0),
+          _buildRoleList(rejectedRoles, 1),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
