@@ -8,12 +8,12 @@
 - [x] Need to `log whole background process`, so I can test see whether it is working or not, on end-devices.
 - [ ] explicit refresh option when swipping up for interested and non-interested screen.
 - [x] To increase the scope of GMAIL query, we can ignore big tables and process all emails from channeli (pic), (currently only emails with subject submission of bio data are being processsed). Also we can insure each new line is in next line.
-- [ ] GMAIL token expiry handling.
+- [x] GMAIL token expiry handling.
 
 
 ### Improvements which can be done
 - [ ] Improve GMAIL search query.
-- [ ] Improve gemini system prompt.
+- [ ] Improve gemini system prompt. `prompt engineering`
 - [ ] Current project can only handle 1 test per role.
     - This could be improved by changing the schema of local db.
 - [ ] How would users know that, which mails are already processed by this app? Background tasks trigger in every 1 hour (hardcoded). But due to android restrictions this periodicity is not uniform. although app would not miss any email in any window.

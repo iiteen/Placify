@@ -12,7 +12,18 @@ class GmailService {
   );
 
   GoogleSignInAccount? _account;
-  gmail.GmailApi? _api;
+  // gmail.GmailApi? _api;
+
+  Future<gmail.GmailApi?> _getApi() async {
+    if (_account == null) {
+      AppLogger.log('Gmail account not initialized.');
+      return null;
+    }
+
+    final headers = await _account!.authHeaders; //refresh token
+    final client = GoogleHttpClient(headers);
+    return gmail.GmailApi(client);
+  }
 
   Future<bool> signIn() async {
     try {
@@ -20,15 +31,10 @@ class GmailService {
       _account ??= await _googleSignIn.signIn();
 
       if (_account == null) return false;
-
-      final headers = await _account!.authHeaders;
-      final client = GoogleHttpClient(headers);
-      _api = gmail.GmailApi(client);
       AppLogger.log('✅ Signed in as: ${_account!.email}');
       return true;
     } catch (e, st) {
       AppLogger.log("❌ Gmail signIn error: $e\n$st");
-      _api = null;
       return false;
     }
   }
@@ -40,7 +46,6 @@ class GmailService {
       AppLogger.log("❌ Gmail signOut error: $e\n$st");
     }
     _account = null;
-    _api = null;
   }
 
   /// Fetch ALL messages (ids + threadId only) matching query + time.
@@ -51,7 +56,8 @@ class GmailService {
     int pageSize = 100,
   }) async {
     try {
-      if (_api == null) {
+      final api = await _getApi();
+      if (api == null) {
         AppLogger.log('Gmail API not initialized.');
         return [];
       }
@@ -61,7 +67,7 @@ class GmailService {
       String? pageToken;
 
       do {
-        final resp = await _api!.users.messages.list(
+        final resp = await api.users.messages.list(
           'me',
           q: query,
           maxResults: pageSize,
@@ -85,11 +91,12 @@ class GmailService {
   /// Fetch metadata + InternalDate for a single message
   Future<gmail.Message?> getMessageMetadata(String messageId) async {
     try {
-      if (_api == null) return null;
+      final api = await _getApi();
+      if (api == null) return null;
 
       // format: 'metadata' automatically includes internalDate (top-level)
       // and payload.headers.
-      final msg = await _api!.users.messages.get(
+      final msg = await api.users.messages.get(
         'me',
         messageId,
         format: 'metadata',
@@ -108,10 +115,14 @@ class GmailService {
     int maxResults = 20,
   }) async {
     try {
-      if (_api == null) return [];
+      final api = await _getApi();
+      if (api == null) {
+        AppLogger.log('Gmail API not initialized.');
+        return [];
+      }
 
       // 1. Get IDs
-      final resp = await _api!.users.messages.list(
+      final resp = await api.users.messages.list(
         'me',
         q: query,
         maxResults: maxResults,
@@ -136,13 +147,10 @@ class GmailService {
 
   Future<String?> getFullMessageBody(String messageId) async {
     try {
-      if (_api == null) return null;
+      final api = await _getApi();
+      if (api == null) return null;
 
-      final msg = await _api!.users.messages.get(
-        'me',
-        messageId,
-        format: 'full',
-      );
+      final msg = await api.users.messages.get('me', messageId, format: 'full');
 
       if (msg.payload == null) return null;
 
