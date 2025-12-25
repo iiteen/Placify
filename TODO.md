@@ -11,8 +11,8 @@
 - [x] GMAIL token expiry handling.
 
 ## Brainstorming
-- company: null (no need to process further)
-- roles: [] (if empty then skip)
+- [x] company: null (no need to process further)
+- [x] roles: (if empty then skip)
     - but if roles: [{name: null, tests:[]}] (info of application_deadline, ppt, and roles should be updated for each role.)
     - also if roles: [{name: null, tests:[]}] (is point of loss of info as per current algo.)
 
@@ -44,3 +44,4 @@
 - [ ] Current project can only handle 1 test per role.
     - This could be improved by changing the schema of local db.
 - [ ] How would users know that, which mails are already processed by this app? Background tasks trigger in every 1 hour (hardcoded). But due to android restrictions this periodicity is not uniform. although app would not miss any email in any window.
+- [x] RoleNames can be null, (company came for ppt before announcing any roles).

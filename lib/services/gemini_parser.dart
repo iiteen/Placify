@@ -143,8 +143,15 @@ FIELD EXTRACTION RULES
 ================================================
 
 1. COMPANY
-- Extract from anywhere in the email.
-- Prefer the most complete and formal name.
+- FIRST, attempt to extract the company name from the EMAIL SUBJECT.
+- If a company name is found in the subject:
+    - Use ONLY that exact string as the company name.
+    - DO NOT modify it.
+    - DO NOT merge it with versions found in the email body.
+    - IGNORE all company name mentions in the email body.
+- ONLY if the subject does NOT contain a company name:
+    - Extract from the email body.
+    - Prefer the most complete and formal mention.
 - Do NOT infer from sender email domain unless explicitly written.
 
 ------------------------------------------------
@@ -171,6 +178,32 @@ If NO explicit role is found:
 ❌ DISCARD department names like:
 "Computer Science", "Electrical", "Mechanical", "Civil"
 UNLESS they are part of a role name AFTER "Profile:".
+
+------------------------------------------------
+ROLE ARRAY FINALIZATION RULE (ABSOLUTE)
+------------------------------------------------
+
+The "roles" array must NEVER be empty.
+
+RULES:
+
+1. If NO valid role names are explicitly found in the email:
+   - Output EXACTLY:
+     "roles": [{ "name": null, "tests": [] }]
+
+2. If ONE OR MORE valid role names are found:
+   - The default null role MUST NOT appear.
+   - The "roles" array must contain ONLY real roles.
+
+ABSOLUTE PROHIBITIONS:
+- NEVER output an empty "roles" array.
+- NEVER include { "name": null, "tests": [] } alongside real roles.
+- NEVER duplicate roles.
+
+FINAL CHECK (MANDATORY):
+- Before emitting JSON:
+    - If any role has "name" = null AND any other role has a non-null name,
+      REMOVE the null role.
 
 ------------------------------------------------
 3. APPLICATION DEADLINE
@@ -251,7 +284,7 @@ B. EVENT-CENTRIC EXTRACTION
 For each EVENT (Test / PPT / Application):
 
 1. Any line whose label refers to the SAME EVENT
-   contributes to that event’s datetime.
+   contributes to that event's datetime.
 
 2. Inspect ONLY the content AFTER ':' and decide:
    - Does it contain a DATE?

@@ -92,6 +92,19 @@ class DatabaseService {
     }
   }
 
+  Future<List<Role>> findRolesByCompany(String companyName) async {
+    final db = await database;
+    final rows = await db.query(
+      'roles',
+      where: 'companyName = ?',
+      whereArgs: [companyName],
+    );
+
+    // Map each row to a Role object
+    return rows.map((row) => Role.fromMap(row)).toList();
+  }
+
+
   // Fetch only active roles (not rejected)
   Future<List<Role>> getActiveRoles() async {
     final dbClient = await database;

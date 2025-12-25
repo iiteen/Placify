@@ -118,7 +118,6 @@ class CalendarService {
         final newId = await _createEvent(role, type, date);
         if (newId != null && newId.isNotEmpty) {
           setEventId(newId);
-          AppLogger.log("✨ Created $type event → ID: $newId");
         } else {
           AppLogger.log("❌ Failed to create $type event.");
         }

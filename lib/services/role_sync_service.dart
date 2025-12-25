@@ -11,39 +11,143 @@ class RoleSyncService {
   Future<void> syncRoleFromParsedData(Map<String, dynamic> parsedData) async {
     try {
       final companyName = parsedData['company'];
-      final applicationDeadline = parsedData['application_deadline'];
-      final pptDate = parsedData['ppt']?['datetime'];
+      var applicationDeadline = parsedData['application_deadline'];
+      var pptDate = parsedData['ppt']?['datetime'];
       final rolesData = parsedData['roles'];
+      final defaultRole = "TBD";
 
-      if (companyName == null || companyName.isEmpty || rolesData == null) {
+      if (companyName == null || companyName.isEmpty) {
+        AppLogger.log("⚠️ No valid company name found in parsed data.");
+        return;
+      }
+
+      if (rolesData == null || rolesData.isEmpty) {
         AppLogger.log(
-          "⚠️ No valid company name or roles found in parsed data.",
+          "⚠️ No valid roles found in parsed data. It should never appear. (Possible loss of INFO)",
         );
         return;
       }
 
+      Role? placeholderRole = await _db.findRole(companyName, defaultRole);
+
       for (var roleData in rolesData) {
         final roleName = roleData['name'];
-        //TODO: even if following condition is true, we can lose info about ppt and application deadline.
-        // in some cases these info should be applied to all roles
-        if (roleName == null || roleName.isEmpty) continue;
-
         //TODO: later handle mutliple tests for each role
         final tests = roleData['tests'];
         final test = (tests != null && tests.isNotEmpty) ? tests[0] : null;
         final testDate = test != null ? test['datetime'] : null;
 
-        Role? role = await _db.findRole(companyName, roleName);
-
-        final DateTime? pptDt = pptDate != null
-            ? DateTime.tryParse(pptDate)
-            : null;
-        final DateTime? appDl = applicationDeadline != null
-            ? DateTime.tryParse(applicationDeadline)
-            : null;
         final DateTime? tstDt = testDate != null
             ? DateTime.tryParse(testDate)
             : null;
+        DateTime? pptDt = pptDate != null ? DateTime.tryParse(pptDate) : null;
+        DateTime? appDl = applicationDeadline != null
+            ? DateTime.tryParse(applicationDeadline)
+            : null;
+
+        if (roleName == null || roleName.isEmpty) {
+          AppLogger.log(
+            "ℹ️ Role name missing. Updating PPT/Application Deadline for all roles of $companyName",
+          );
+
+          final roles = await _db.findRolesByCompany(companyName);
+          if (roles.isEmpty) {
+            AppLogger.log(
+              "ℹ️ No roles available. Generating a placeholder role.",
+            );
+
+            final placeholderRole = Role(
+              companyName: companyName,
+              roleName: defaultRole,
+              pptDate: pptDt,
+              applicationDeadline: appDl,
+              testDate: null,
+              isInterested: false,
+              isRejected: false,
+            );
+
+            await _db.insertRole(placeholderRole);
+
+            try {
+              await _calendar.syncRoleEvents(placeholderRole);
+            } catch (e, st) {
+              AppLogger.log(
+                "❌ Calendar sync failed for placeholder role: $e\n$st",
+              );
+            }
+
+            await _db.updateRole(placeholderRole);
+            continue;
+          }
+
+          for (final role in roles) {
+            bool needsUpdate = false;
+
+            if (pptDt != null && role.pptDate != pptDt) {
+              role.pptDate = pptDt;
+              needsUpdate = true;
+            }
+            if (appDl != null && role.applicationDeadline != appDl) {
+              role.applicationDeadline = appDl;
+              needsUpdate = true;
+            }
+            if (tstDt != null && role.testDate != tstDt) {
+              role.testDate = tstDt;
+              needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+              await _db.updateRole(role);
+
+              try {
+                await _calendar.syncRoleEvents(role);
+              } catch (e, st) {
+                AppLogger.log(
+                  "❌ Calendar sync failed for bulk role update: $e\n$st",
+                );
+              }
+
+              await _db.updateRole(role);
+
+              AppLogger.log(
+                "♻️ Bulk-updated role: ${role.companyName} — ${role.roleName}",
+              );
+            } else {
+              AppLogger.log("ℹ️ No updates needed");
+            }
+          }
+
+          continue;
+        }
+
+        //Real roles
+        if (placeholderRole != null) {
+          AppLogger.log(
+            "ℹ️ Placeholder role found for $companyName. Will apply merge logic.",
+          );
+
+          applicationDeadline ??= placeholderRole.applicationDeadline
+              ?.toIso8601String();
+          pptDate ??= placeholderRole.pptDate?.toIso8601String();
+          pptDt ??= placeholderRole.pptDate;
+          appDl ??= placeholderRole.applicationDeadline;
+
+          // Delete placeholder
+          placeholderRole.isRejected = true;
+          try {
+            await _calendar.syncRoleEvents(placeholderRole);
+          } catch (e, st) {
+            AppLogger.log(
+              "❌ Calendar sync failed while deleting placeholder: $e\n$st",
+            );
+          }
+          await _db.deleteRole(placeholderRole.id!);
+
+          AppLogger.log("Deleted placeholder role for $companyName");
+          placeholderRole = null;
+        }
+
+        Role? role = await _db.findRole(companyName, roleName);
 
         if (role == null) {
           // -------------- NEW ROLE --------------
