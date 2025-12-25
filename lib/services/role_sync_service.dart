@@ -24,6 +24,8 @@ class RoleSyncService {
 
       for (var roleData in rolesData) {
         final roleName = roleData['name'];
+        //TODO: even if following condition is true, we can lose info about ppt and application deadline.
+        // in some cases these info should be applied to all roles
         if (roleName == null || roleName.isEmpty) continue;
 
         //TODO: later handle mutliple tests for each role

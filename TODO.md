@@ -10,8 +10,35 @@
 - [x] To increase the scope of GMAIL query, we can ignore big tables and process all emails from channeli (pic), (currently only emails with subject submission of bio data are being processsed). Also we can insure each new line is in next line.
 - [x] GMAIL token expiry handling.
 
+## Brainstorming
+- company: null (no need to process further)
+- roles: [] (if empty then skip)
+    - but if roles: [{name: null, tests:[]}] (info of application_deadline, ppt, and roles should be updated for each role.)
+    - also if roles: [{name: null, tests:[]}] (is point of loss of info as per current algo.)
 
-### Improvements which can be done
+```json
+{
+  "company": string or null,
+  "application_deadline": string or null,
+  "ppt": {
+    "datetime": string or null,
+    "venue": string or null
+  },
+  "roles": [
+    {
+      "name": string or null,
+      "tests": [
+        {
+          "name": string or null,
+          "datetime": string or null
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Improvements which can be done
 - [ ] Improve GMAIL search query.
 - [ ] Improve gemini system prompt. `prompt engineering`
 - [ ] Current project can only handle 1 test per role.

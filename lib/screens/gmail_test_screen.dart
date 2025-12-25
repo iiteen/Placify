@@ -35,14 +35,19 @@ class _GmailTestScreenState extends State<GmailTestScreen> {
       if (!mounted) return;
       setState(() => _loading = true);
 
+      //       final query = '''
+      // from:channeli.img@iitr.ac.in
+      // subject:("Submission Of Biodata" OR "Submission of Bio data")
+      //       ''';
       final query = '''
-from:channeli.img@iitr.ac.in
-subject:("Submission Of Biodata" OR "Submission of Bio data")
+      from:channeli.img@iitr.ac.in
+      "open in noticeboard"
+      "Isgec Heavy Engineering Ltd"
       ''';
 
       final metas = await _gmail.searchAndFetchMetadata(
         query: query,
-        maxResults: 5,
+        maxResults: 100,
       );
 
       if (!mounted) return;
@@ -88,19 +93,29 @@ subject:("Submission Of Biodata" OR "Submission of Bio data")
                   .value ??
               "(no subject)";
 
+          AppLogger.log("================ EMAIL SUBJECT ================");
+          AppLogger.log(subjectHeader);
           AppLogger.log("================ RAW EMAIL BODY ================");
           AppLogger.log(body ?? "NO BODY FOUND");
           AppLogger.log("================================================");
 
+          // Skip further processing if body is empty
+          if (body == null || body.trim().isEmpty) {
+            AppLogger.log("❌ Empty email body. Skipping this email.");
+            setState(() => _loading = false); // Stop loading
+            return;
+          }
+
           final parser = await GeminiParser.createFromPrefs();
           if (parser == null) {
             AppLogger.log("❌ Gemini API key not set in settings.");
+            setState(() => _loading = false); // Stop loading
             return;
           }
 
           final parsedJsonStr = await parser.parseEmail(
             subject: subjectHeader,
-            body: body ?? "",
+            body: body,
             emailReceivedDateTime: date,
           );
 
