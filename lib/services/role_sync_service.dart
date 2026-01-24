@@ -61,7 +61,7 @@ class RoleSyncService {
               roleName: defaultRole,
               pptDate: pptDt,
               applicationDeadline: appDl,
-              testDate: null,
+              testDate: tstDt,
               isInterested: false,
               isRejected: false,
             );
