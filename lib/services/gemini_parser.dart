@@ -1,6 +1,8 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum _GeminiErrorType { promptTooLarge, overloaded, other }
+
 class GeminiParser {
   late final GenerativeModel _model;
 
@@ -344,24 +346,47 @@ If date or time is:
     required String body,
     required String emailReceivedDateTime,
   }) async {
-    final content =
-        """
-$_systemPrompt
+    String currentBody = body;
+    bool waitedOnce = false;
 
-EMAIL RECEIVED DATETIME:
-$emailReceivedDateTime
+    while (true) {
+      try {
+        final content =
+            """
+        $_systemPrompt
 
-EMAIL SUBJECT:
-$subject
+        EMAIL RECEIVED DATETIME:
+        $emailReceivedDateTime
 
-EMAIL BODY:
-$body
-""";
+        EMAIL SUBJECT:
+        $subject
 
-    final response = await _model.generateContent([Content.text(content)]);
+        EMAIL BODY:
+        $body
+          """;
 
-    final text = response.text ?? "{}";
-    return cleanJsonString(text);
+        final response = await _model.generateContent([Content.text(content)]);
+        final text = response.text ?? "{}";
+        return cleanJsonString(text);
+      } catch (e) {
+        final type = _classifyError(e);
+
+        if (type == _GeminiErrorType.overloaded && !waitedOnce) {
+          waitedOnce = true;
+          await Future.delayed(const Duration(minutes: 1));
+          continue;
+        }
+
+        if (type == _GeminiErrorType.promptTooLarge) {
+          currentBody = _trimHalf(currentBody);
+          await Future.delayed(const Duration(minutes: 1));
+          continue;
+        }
+
+        //Anything else -> bubble up
+        rethrow;
+      }
+    }
   }
 
   String cleanJsonString(String input) {
@@ -378,5 +403,23 @@ $body
     }
 
     return cleaned;
+  }
+
+  _GeminiErrorType _classifyError(Object e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('500')) {
+      return _GeminiErrorType.promptTooLarge;
+    }
+
+    if (msg.contains('503')) {
+      return _GeminiErrorType.overloaded;
+    }
+
+    return _GeminiErrorType.other;
+  }
+
+  String _trimHalf(String text) {
+    final mid = (text.length / 2).floor();
+    return text.substring(mid);
   }
 }
