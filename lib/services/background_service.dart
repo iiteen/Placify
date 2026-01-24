@@ -113,14 +113,17 @@ void callbackDispatcher() {
       if (lastEpoch == 0) {
         lastEpoch =
             DateTime.now()
-                .subtract(const Duration(days: 2))
+                .subtract(const Duration(days: 4))
                 .millisecondsSinceEpoch ~/
             1000;
-        AppLogger.log("🕒 First run → fetching last 2 days.");
+        AppLogger.log("🕒 First run → fetching last 4 days.");
       }
 
-      const baseQuery =
-          'from:channeli.img@iitr.ac.in subject:("Submission Of Biodata" OR "Submission of Bio data")';
+      const baseQuery = '''
+      from:channeli.img@iitr.ac.in
+      "open in noticeboard"
+      -subject:"shortlist for interviews"
+      ''';
 
       List<gmail.Message> msgs = [];
 
@@ -131,11 +134,8 @@ void callbackDispatcher() {
           pageSize: 50,
         );
       } catch (e) {
-        AppLogger.log("⚠ fetchMessagesSince failed → fallback: $e");
-        msgs = await gmailService.searchAndFetchMetadata(
-          query: '$baseQuery after:$lastEpoch',
-          maxResults: 50,
-        );
+        AppLogger.log("⚠ fetchMessagesSince failed: $e");
+        return Future.value(true);
       }
 
       if (msgs.isEmpty) {
@@ -146,8 +146,6 @@ void callbackDispatcher() {
       // Gmail returns newest → oldest
       msgs = msgs.reversed.toList();
       AppLogger.log("🔄 Processing ${msgs.length} messages (Oldest → Newest)");
-
-      int maxEpochSeen = lastEpoch;
 
       for (var m in msgs) {
         try {
@@ -170,7 +168,11 @@ void callbackDispatcher() {
           }
 
           final body = await gmailService.getFullMessageBody(id);
-          if (body == null || body.trim().isEmpty) continue;
+          if (body == null || body.trim().isEmpty) {
+            AppLogger.log("❌ Empty email body. Skipping this email.");
+            //in this case epoch is not updated.
+            continue;
+          }
 
           AppLogger.log(
             "📧 [${DateTime.fromMillisecondsSinceEpoch(currentEpoch * 1000)}] $subject\n $body",
@@ -195,18 +197,16 @@ void callbackDispatcher() {
           if (parsedJson is! Map<String, dynamic>) continue;
 
           await roleSync.syncRoleFromParsedData(parsedJson);
+          AppLogger.log("✅ Roles synced to DB and Calendar successfully.");
 
-          if (currentEpoch > maxEpochSeen) {
-            maxEpochSeen = currentEpoch;
+          //checkpoint
+          if (currentEpoch > lastEpoch) {
+            lastEpoch = currentEpoch;
+            await ProcessedEmailStore.setLastProcessedEpochSec(lastEpoch);
           }
         } catch (e, st) {
           AppLogger.log("❌ Error processing ${m.id}: $e\n$st");
         }
-      }
-
-      if (maxEpochSeen > lastEpoch) {
-        await ProcessedEmailStore.setLastProcessedEpochSec(maxEpochSeen + 1);
-        AppLogger.log("🔄 Updated lastEpoch → ${maxEpochSeen + 1}");
       }
 
       AppLogger.log("✅ Background worker finished.");

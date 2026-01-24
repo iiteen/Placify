@@ -9,33 +9,87 @@
 - [x] explicit refresh option when swipping up for interested and non-interested screen.
 - [x] To increase the scope of GMAIL query, we can ignore big tables and process all emails from channeli (pic), (currently only emails with subject submission of bio data are being processsed). Also we can insure each new line is in next line.
 - [x] GMAIL token expiry handling.
+- [ ] how will app functions will behave when no internet?
+  - it should not iterate further unless internet is there. (i.e. donot update the epochs in such scenario and try in next scheduled task again.)
 
-## Brainstorming
+## Edge cases
 - [x] company: null (no need to process further)
 - [x] roles: (if empty then skip)
     - but if roles: [{name: null, tests:[]}] (info of application_deadline, ppt, and roles should be updated for each role.)
     - also if roles: [{name: null, tests:[]}] (is point of loss of info as per current algo.)
+    - <details>
+      <summary>JSON return from gemini</summary>
 
-```json
-{
-  "company": string or null,
-  "application_deadline": string or null,
-  "ppt": {
-    "datetime": string or null,
-    "venue": string or null
-  },
-  "roles": [
-    {
-      "name": string or null,
-      "tests": [
-        {
-          "name": string or null,
-          "datetime": string or null
-        }
-      ]
-    }
-  ]
+      ```json
+      {
+        "company": string or null,
+        "application_deadline": string or null,
+        "ppt": {
+          "datetime": string or null,
+          "venue": string or null
+        },
+        "roles": [
+          {
+            "name": string or null,
+            "tests": [
+              {
+                "name": string or null,
+                "datetime": string or null
+              }
+            ]
+          }
+        ]
+      }
+      ```
+      </details>
+
+- [x] ignoring all emails with subject "shortlist for interviews"
+
+## some more errors while background tasks.
+- [x] error when token limit exceeded
+    - prompt too large, error 500 (trim in half, wait & retry).
+    - model overloaded / rate limit, error 503 (wait & retry).
+
+```log
+[2026-01-22T12:52:36.124427] ❌ Error processing 19bdfd046260b08e: GenerativeAIException: Server Error [503]: {
+  "error": {
+    "code": 503,
+    "message": "The model is overloaded. Please try again later.",
+    "status": "UNAVAILABLE"
+  }
 }
+
+#0      HttpApiClient.makeRequest (package:google_generative_ai/src/client.dart:66:7)
+<asynchronous suspension>
+#1      parseGenerateContentResponse (package:google_generative_ai/src/api.dart:581:1)
+<asynchronous suspension>
+#2      GeminiParser.parseEmail (package:flutter_application_1/services/gemini_parser.dart:361:22)
+<asynchronous suspension>
+#3      callbackDispatcher.<anonymous closure> (package:flutter_application_1/services/background_service.dart:182:29)
+<asynchronous suspension>
+#4      _WorkmanagerFlutterApiImpl.executeTask (package:workmanager/src/workmanager_impl.dart:326:20)
+<asynchronous suspension>
+#5      WorkmanagerFlutterApi.setUp.<anonymous closure> (package:workmanager_platform_interface/src/pigeon/workmanager_api.g.dart:903:33)
+<asynchronous suspension>
+#6      BasicMessageChannel.setMessageHandler.<anonymous closure> (package:flutter/src/services/platform_channel.dart:259:36)
+<asynchronous suspension>
+#7      _DefaultBinaryMessenger.setMessageHandler.<anonymous closure> (package:flutter/src/services/binding.dart:665:22)
+<asynchronous suspension>
+```
+
+- [x] error when internet disconnected
+    - handled using workmanager constraints
+```log
+[2026-01-23T03:56:25.656449] ❌ Gmail background sign-in failed.
+tion(channel-error, Unable to establish connection on channel: "dev.flutter.pigeon.google_sign_in_android.GoogleSignInApi.signIn"., null, null)
+#0      GoogleSignInApi.signIn (package:google_sign_in_android/src/messages.g.dart:253:7)
+<asynchronous suspension>
+#1      GoogleSignInAndroid._signInUserDataFromChannelData (package:google_sign_in_android/google_sign_in_android.dart:114:3)
+<asynchronous suspension>
+#2      GoogleSignIn._callMethod (package:google_sign_in/google_sign_in.dart:282:30)
+<asynchronous suspension>
+#3      GoogleSignIn.signIn.isCanceled (package:google_sign_in/google_sign_in.dart:436:5)
+<asynchronous suspension>
 ```
 
 ## Improvements which can be done

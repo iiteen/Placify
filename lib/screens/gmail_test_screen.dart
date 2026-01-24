@@ -35,19 +35,15 @@ class _GmailTestScreenState extends State<GmailTestScreen> {
       if (!mounted) return;
       setState(() => _loading = true);
 
-      //       final query = '''
-      // from:channeli.img@iitr.ac.in
-      // subject:("Submission Of Biodata" OR "Submission of Bio data")
-      //       ''';
       final query = '''
       from:channeli.img@iitr.ac.in
       "open in noticeboard"
-      "Isgec Heavy Engineering Ltd"
+      -subject:"shortlist for interviews"
       ''';
 
       final metas = await _gmail.searchAndFetchMetadata(
         query: query,
-        maxResults: 100,
+        maxResults: 50,
       );
 
       if (!mounted) return;
@@ -82,6 +78,8 @@ class _GmailTestScreenState extends State<GmailTestScreen> {
         if (!mounted) return;
         setState(() => _loading = true);
 
+        //TODO: after all the testing, update below code in background_service.dart from line:172
+        //Incase of network interruption this code will misbehave, but background worker wouldn't
         try {
           final body = await _gmail.getFullMessageBody(m.id!);
           final subjectHeader =
