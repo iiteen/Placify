@@ -84,7 +84,7 @@ class GmailService {
       return results;
     } catch (e, st) {
       AppLogger.log("❌ Gmail fetchMessagesSince error: $e\n$st");
-      return [];
+      rethrow;
     }
   }
 

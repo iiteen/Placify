@@ -9,6 +9,7 @@
 - [x] explicit refresh option when swipping up for interested and non-interested screen.
 - [x] To increase the scope of GMAIL query, we can ignore big tables and process all emails from channeli (pic), (currently only emails with subject submission of bio data are being processsed). Also we can insure each new line is in next line.
 - [x] GMAIL token expiry handling.
+- [ ] Now test the workflow on some real devices.
 
 ## Edge cases
 - [x] company: null (no need to process further)

@@ -10,6 +10,7 @@ import 'gemini_parser.dart';
 import 'role_sync_service.dart';
 import '../utils/processed_email_store.dart';
 import '../utils/applogger.dart';
+import '../utils/email_retry_store.dart';
 
 class BackgroundService {
   static const String _taskUniqueName = "placement_email_worker";
@@ -29,10 +30,12 @@ class BackgroundService {
     await Workmanager().registerPeriodicTask(
       _taskUniqueName,
       _taskUniqueName,
-      frequency: const Duration(hours: 1),
+      frequency: const Duration(minutes: 30),
       initialDelay: const Duration(minutes: 1),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
       constraints: Constraints(networkType: NetworkType.connected),
+      backoffPolicy: BackoffPolicy.exponential,
+      backoffPolicyDelay: const Duration(minutes: 1),
     );
 
     await ProcessedEmailStore.setBackgroundRunning(true);
@@ -93,19 +96,22 @@ void callbackDispatcher() {
 
       final gmailService = GmailService();
       final rateLimiter = GeminiRateLimiter(maxRequestsPerMinute: 5);
+      const maxRetries = 3;
 
       final parser = await GeminiParser.createFromPrefs();
       if (parser == null) {
-        AppLogger.log("❌ GeminiParser missing API key. Skipping.");
-        return Future.value(true);
+        await AppLogger.log("❌ GeminiParser missing API key. Skipping.");
+        await AppLogger.flush();
+        return Future.value(false);
       }
 
       final roleSync = RoleSyncService();
 
       final signedIn = await gmailService.signIn();
       if (!signedIn) {
-        AppLogger.log("❌ Gmail background sign-in failed.");
-        return Future.value(true);
+        await AppLogger.log("❌ Gmail background sign-in failed.");
+        await AppLogger.flush();
+        return Future.value(false);
       }
 
       // sliding window
@@ -113,10 +119,10 @@ void callbackDispatcher() {
       if (lastEpoch == 0) {
         lastEpoch =
             DateTime.now()
-                .subtract(const Duration(days: 4))
+                .subtract(const Duration(days: 2))
                 .millisecondsSinceEpoch ~/
             1000;
-        AppLogger.log("🕒 First run → fetching last 4 days.");
+        AppLogger.log("🕒 First run → fetching last 2 days.");
       }
 
       const baseQuery = '''
@@ -134,12 +140,14 @@ void callbackDispatcher() {
           pageSize: 50,
         );
       } catch (e) {
-        AppLogger.log("⚠ fetchMessagesSince failed: $e");
-        return Future.value(true);
+        await AppLogger.log("⚠ fetchMessagesSince failed: $e");
+        await AppLogger.flush();
+        return Future.value(false);
       }
 
       if (msgs.isEmpty) {
-        AppLogger.log("📭 No new messages found.");
+        await AppLogger.log("📭 No new messages found.");
+        await AppLogger.flush();
         return Future.value(true);
       }
 
@@ -148,9 +156,9 @@ void callbackDispatcher() {
       AppLogger.log("🔄 Processing ${msgs.length} messages (Oldest → Newest)");
 
       for (var m in msgs) {
+        if (m.id == null) continue;
+        final id = m.id!;
         try {
-          if (m.id == null) continue;
-          final id = m.id!;
           await rateLimiter.acquire();
 
           final meta = await gmailService.getMessageMetadata(id);
@@ -204,16 +212,34 @@ void callbackDispatcher() {
             lastEpoch = currentEpoch;
             await ProcessedEmailStore.setLastProcessedEpochSec(lastEpoch);
           }
+          // success → cleanup retry state
+          await EmailRetryStore.clear(id);
         } catch (e, st) {
           AppLogger.log("❌ Error processing ${m.id}: $e\n$st");
+
+          final retryCount = await EmailRetryStore.getRetryCount(id);
+          if (retryCount >= maxRetries) {
+            AppLogger.log(
+              "🚫 Max retries reached for $id. Skipping permanently.",
+            );
+            continue; // skip permanently
+          }
+
+          AppLogger.log("⚠️ Retry this email.");
+          // retry later
+          await EmailRetryStore.incrementRetry(id);
+
+          return Future.value(false);
         }
       }
 
-      AppLogger.log("✅ Background worker finished.");
+      await AppLogger.log("✅ Background worker finished.");
+      await AppLogger.flush();
       return Future.value(true);
     } catch (e, st) {
-      AppLogger.log("❌ Background fatal error: $e\n$st");
-      return Future.value(true);
+      await AppLogger.log("❌ Background fatal error: $e\n$st");
+      await AppLogger.flush();
+      return Future.value(false);
     }
   });
 }

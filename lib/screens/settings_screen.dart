@@ -131,13 +131,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : const Text("Run Email Processor Now"),
               ),
             ),
-
-            const SizedBox(height: 8),
-            const Text(
-              'This runs the email parser immediately for testing.\n'
-              'Background scheduling will be added later.',
-              style: TextStyle(fontSize: 12),
-            ),
           ],
         ),
       ),

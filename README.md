@@ -19,3 +19,5 @@ It uses your gmail to read emails from channeli, and create events regarding tha
 
 ## helper commands
 - `adb pull /storage/emulated/0/Android/data/com.example.flutter_application_1/files/app.log ./app.log`
+- `adb pair IP_ADDRESS:PORT`
+- `adb connect IP_ADDRESS:PORT`
