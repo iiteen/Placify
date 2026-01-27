@@ -151,34 +151,64 @@ class GmailService {
       if (api == null) return null;
 
       final msg = await api.users.messages.get('me', messageId, format: 'full');
-
       if (msg.payload == null) return null;
 
-      final raw = _extractBody(msg.payload!);
+      final raw = await _extractBody(api, messageId, msg.payload!);
       if (raw == null || raw.trim().isEmpty) return null;
 
+      //Gmail mails like yours are quoted-printable
+      final decoded = _decodeQuotedPrintable(raw);
+
       // AppLogger.log("================ HTML Content ================");
-      // AppLogger.log(raw);
+      // AppLogger.log(decoded);
       // AppLogger.log("================================");
 
-      return _extractCleanMailBody(raw);
+      return _extractCleanMailBody(decoded);
     } catch (e, st) {
       AppLogger.log("❌ Gmail getFullMessageBody error: $e\n$st");
       return null;
     }
   }
 
-  String? _extractBody(gmail.MessagePart part) {
+  Future<String?> _extractBody(
+    gmail.GmailApi api,
+    String messageId,
+    gmail.MessagePart part,
+  ) async {
     try {
-      if (part.body != null && part.body!.data != null) {
-        return _decodeBase64(part.body!.data!);
+      final mime = part.mimeType ?? '';
+
+      // Only allow readable text
+      final isText = mime == 'text/plain' || mime == 'text/html';
+
+      if (isText) {
+        // Case 1: inline body
+        if (part.body?.data != null) {
+          return _decodeBase64(part.body!.data!);
+        }
+
+        // Case 2: Gmail stored body as attachment
+        if (part.body?.attachmentId != null) {
+          final attach = await api.users.messages.attachments.get(
+            'me',
+            messageId,
+            part.body!.attachmentId!,
+          );
+
+          if (attach.data != null) {
+            return _decodeBase64(attach.data!);
+          }
+        }
       }
+
+      // Walk nested multiparts
       if (part.parts != null) {
         for (var p in part.parts!) {
-          final res = _extractBody(p);
+          final res = await _extractBody(api, messageId, p);
           if (res != null && res.trim().isNotEmpty) return res;
         }
       }
+
       return null;
     } catch (e) {
       return null;
@@ -188,21 +218,19 @@ class GmailService {
   String _decodeBase64(String input) {
     try {
       String normalized = input.replaceAll('-', '+').replaceAll('_', '/');
-      switch (normalized.length % 4) {
-        case 1:
-          normalized += '===';
-          break;
-        case 2:
-          normalized += '==';
-          break;
-        case 3:
-          normalized += '=';
-          break;
-      }
-      return String.fromCharCodes(base64.decode(normalized));
+      normalized += '=' * ((4 - normalized.length % 4) % 4);
+      return utf8.decode(base64.decode(normalized));
     } catch (e) {
       return '';
     }
+  }
+
+  String _decodeQuotedPrintable(String input) {
+    String s = input.replaceAll('=\r\n', '').replaceAll('=\n', '');
+
+    return s.replaceAllMapped(RegExp(r'=([A-Fa-f0-9]{2})'), (m) {
+      return String.fromCharCode(int.parse(m.group(1)!, radix: 16));
+    });
   }
 
   Future<String> _extractCleanMailBody(String html) async {
