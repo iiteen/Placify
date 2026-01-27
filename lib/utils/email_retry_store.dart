@@ -16,4 +16,17 @@ class EmailRetryStore {
     final prefs = await SharedPreferences.getInstance();
     prefs.remove("retry_$emailId");
   }
+
+  static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final keysToRemove = prefs
+        .getKeys()
+        .where((key) => key.startsWith('retry_'))
+        .toList();
+
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
+  }
 }

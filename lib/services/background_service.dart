@@ -225,16 +225,18 @@ void callbackDispatcher() {
             continue; // skip permanently
           }
 
-          AppLogger.log("⚠️ Retry this email.");
           // retry later
           await EmailRetryStore.incrementRetry(id);
 
+          await AppLogger.log("⚠️ Retry this email.");
+          await AppLogger.flush();
           return Future.value(false);
         }
       }
 
       await AppLogger.log("✅ Background worker finished.");
       await AppLogger.flush();
+      await EmailRetryStore.clearAll();
       return Future.value(true);
     } catch (e, st) {
       await AppLogger.log("❌ Background fatal error: $e\n$st");
