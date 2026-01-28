@@ -11,7 +11,7 @@
 
 
     <application
-        android:label="flutter_application_1"
+        android:label="Placify"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"> <!-- some permission related to back button -->

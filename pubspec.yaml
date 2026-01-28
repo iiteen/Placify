@@ -1,5 +1,5 @@
-name: flutter_application_1
-description: "A new Flutter project."
+name: placify
+description: "From placement emails to calendar reminders."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -56,6 +56,8 @@ dependencies:
 
   # CRITICAL UPDATE: Fixes the "Unresolved reference" crash
   workmanager: ^0.9.0
+  rename: ^3.1.0
+  flutter_launcher_icons: ^0.14.4
   
 
 dev_dependencies:
@@ -71,6 +73,10 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
+flutter_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
 
 # The following section is specific to Flutter packages.
 flutter:

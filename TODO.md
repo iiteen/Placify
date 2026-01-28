@@ -64,9 +64,9 @@
       <asynchronous suspension>
       #1      parseGenerateContentResponse (package:google_generative_ai/src/api.dart:581:1)
       <asynchronous suspension>
-      #2      GeminiParser.parseEmail (package:flutter_application_1/services/gemini_parser.dart:361:22)
+      #2      GeminiParser.parseEmail (package:placify/services/gemini_parser.dart:361:22)
       <asynchronous suspension>
-      #3      callbackDispatcher.<anonymous closure> (package:flutter_application_1/services/background_service.dart:182:29)
+      #3      callbackDispatcher.<anonymous closure> (package:placify/services/background_service.dart:182:29)
       <asynchronous suspension>
       #4      _WorkmanagerFlutterApiImpl.executeTask (package:workmanager/src/workmanager_impl.dart:326:20)
       <asynchronous suspension>
