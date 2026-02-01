@@ -36,6 +36,24 @@ class CalendarService {
     }
   }
 
+  List<Reminder> _buildSmartReminder(DateTime eventStart) {
+    final now = DateTime.now();
+
+    final preferred = eventStart.subtract(const Duration(minutes: 30));
+    if (preferred.isAfter(now)) {
+      final mins = eventStart.difference(preferred).inMinutes;
+      return [Reminder(minutes: mins)];
+    }
+
+    final fiveMin = now.add(const Duration(minutes: 5));
+    if (fiveMin.isBefore(eventStart)) {
+      final mins = eventStart.difference(fiveMin).inMinutes;
+      return [Reminder(minutes: mins)];
+    }
+
+    return [];
+  }
+
   String _styledEventType(String t) {
     if (t.contains('PPT')) return "🟩 PPT";
     if (t.contains('Test')) return "🟦 TEST";
@@ -53,6 +71,7 @@ class CalendarService {
     try {
       final start = TZDateTime.from(date, local);
       final end = start.add(const Duration(hours: 1));
+      final reminders = _buildSmartReminder(start);
 
       final event = Event(
         _calendarId!,
@@ -60,6 +79,7 @@ class CalendarService {
             "${_styledEventType(eventType)} — ${role.companyName} (${role.roleName})",
         start: start,
         end: end,
+        reminders: reminders,
       );
 
       final res = await _calendar.createOrUpdateEvent(event);

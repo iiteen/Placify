@@ -29,10 +29,9 @@ class AppLogger {
 
     if (kDebugMode) {
       debugPrint(line);
+      _logQueue.add(line);
+      _processQueue();
     }
-
-    _logQueue.add(line);
-    _processQueue();
   }
 
   static void _processQueue() async {
