@@ -30,7 +30,7 @@ class BackgroundService {
     await Workmanager().registerPeriodicTask(
       _taskUniqueName,
       _taskUniqueName,
-      frequency: const Duration(minutes: 30),
+      frequency: const Duration(minutes: 55),
       initialDelay: const Duration(minutes: 1),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
       constraints: Constraints(networkType: NetworkType.connected),

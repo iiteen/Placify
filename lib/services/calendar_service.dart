@@ -9,7 +9,7 @@ class CalendarService {
   Future<void> initCalendar() async {
     try {
       final perms = await _calendar.requestPermissions();
-      if (!(perms.isSuccess && perms.data == true)) {
+      if (!perms.isSuccess || perms.data != true) {
         AppLogger.log(
           "⚠️ Calendar permission NOT granted. Events cannot be created.",
         );
@@ -17,8 +17,14 @@ class CalendarService {
       }
 
       final calendarsResult = await _calendar.retrieveCalendars();
-      final calendars = calendarsResult.data;
+      if (!calendarsResult.isSuccess || calendarsResult.data == null) {
+        AppLogger.log(
+          "❌ Failed to retrieve calendars: ${calendarsResult.errors}",
+        );
+        return;
+      }
 
+      final calendars = calendarsResult.data;
       if (calendars == null || calendars.isEmpty) {
         AppLogger.log("⚠️ No calendars found on this device.");
         return;
