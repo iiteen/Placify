@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../services/background_logic_test.dart'; // 👈 ADD THIS
+import '../services/background_logic_test.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -70,6 +71,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _openGithub() async {
+    final Uri url = Uri.parse('https://github.com/iiteen/Placify');
+
+    // Capture context safely before any async gap
+    final ctx = context;
+
+    try {
+      // Launch in external browser (async)
+      final launched = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
+
+      // Only use context after async if ctx.mounted
+      if (!launched && ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text("Could not open GitHub link")),
+        );
+      }
+    } catch (e) {
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(
+          ctx,
+        ).showSnackBar(SnackBar(content: Text("Error launching URL: $e")));
+      }
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -129,6 +158,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       )
                     : const Text("Run Email Processor Now"),
+              ),
+            ),
+
+            const Spacer(),
+            // ---------- GITHUB ----------
+            // GitHub link
+            Center(
+              child: GestureDetector(
+                onTap: _openGithub,
+                child: const Text(
+                  "View on GitHub • FAQ • Issues • Help",
+                  style: TextStyle(
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
               ),
             ),
           ],
