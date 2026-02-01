@@ -1,4 +1,4 @@
-# placify
+# Placify
 
 This project is aimed to track your placement and internship companies ppt, test and application deadline.
 
@@ -21,3 +21,4 @@ It uses your gmail to read emails from channeli, and create events regarding tha
 - `adb pull /storage/emulated/0/Android/data/com.iiteens.placify/files/app.log ./app.log`
 - `adb pair IP_ADDRESS:PORT`
 - `adb connect IP_ADDRESS:PORT`
+- `flutter pub run flutter_launcher_icons`

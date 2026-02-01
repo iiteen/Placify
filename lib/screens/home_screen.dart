@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Placement Tracker"),
+        title: const Text("Placify"),
         actions: [
           IconButton(
             icon: const Icon(Icons.email),
