@@ -1,4 +1,4 @@
-# ![Logo](assets\icon\readme_icon.png) Placify
+# ![Logo](assets/icon/readme_icon.png) Placify
 
 **Placify** is a Flutter-based application that helps students effortlessly track **placement and internship opportunities** by automatically monitoring important emails and setting timely reminders.
 
