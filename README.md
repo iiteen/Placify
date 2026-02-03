@@ -1,24 +1,85 @@
-# Placify
+# ![Logo](assets\icon\readme_icon.png) Placify
 
-This project is aimed to track your placement and internship companies ppt, test and application deadline.
+**Placify** is a Flutter-based application that helps students effortlessly track **placement and internship opportunities** by automatically monitoring important emails and setting timely reminders.
 
-It uses your gmail to read emails from channeli, and create events regarding that directly in your calendar to remind you.
+The app scans official placement-related emails, extracts key details such as **PPTs, tests, and application deadlines**, and creates corresponding **calendar events** so you never miss an important update.
+
+## Features
+
+- Reads placement-related emails from **Channeli**
+- Automatically creates **calendar reminders** for deadlines and events
+- Uses **Gemini AI** to intelligently parse email content
+- Option to ignore or reject specific companies or roles
+- Runs as a **background service** for continuous tracking
+
+## Demo Video
+
+Watch the full demo here:  
+**YouTube:**  
+[![Placify Demo](https://img.youtube.com/vi/bgKUzG64VU8/0.jpg)](https://www.youtube.com/watch?v=bgKUzG64VU8)
 
 ## Getting Started
-- Turn on email feature of channeli for PIC notifications (noticeboard) and for PIC portal both (it's optional for portal).
-- Use your iitr email for login. (So it can read emails from channeli)
-- Give permission to edit your calendar.
-- Give your gemini api key. (Ofcourse free one, we won't exhaust your limit. Still to be on safer side, provide key for which billing is turned off.) (It will be used to parse your emails, maybe you can design a better parser but not me😂.)
-- By default, you will get a reminder x mins. before the event. This x is default in your calendar app. Set it as you want.
-- If you see that this app tracks some companies/roles which you dont want to track then just mark them as rejected (then it would also ignore future mails from that company/role).
-- Yeah you can delete those roles/companies also, but future mails regarding those roles/companies will again create those entries in case of deletion.
 
-## debug filter
+Follow these steps to set up Placify on your device:
 
+### 1. Channeli Configuration
+- Enable **email notifications** on Channeli:
+  - PIC **Noticeboard** (required)
+  - PIC **Portal** (optional)
+
+### 2. Login
+- Sign in using your **IITR email ID**  
+  *(Required to access Channeli emails)*
+
+### 3. Permissions
+- Grant permission to:
+  - **Read & edit your calendar**
+  - **Read emails** (only placement-related)
+
+### 4. Gemini API Key
+- Provide a **Gemini API key** (free tier is sufficient)
+- Billing **should be disabled** for safety
+- Used only to parse email content, not for storage
+
+Get your API key here:  
+https://aistudio.google.com/api-keys
+
+### 5. Start Background Service
+- Enable the background service from the app to allow continuous tracking.
+
+## App Behavior & Controls
+
+- If the app tracks a **company or role you’re not interested in**, mark it as **Rejected**.
+  - Future emails for that company/role will be ignored.
+- You may delete tracked entries, but:
+  - If new emails arrive for the same role/company, they will be re-added automatically.
+
+## Privacy & Security
+
+- Emails are accessed **only** to extract placement-related information.
+- No email content is stored or shared externally.
+- Gemini API is used strictly for **text parsing**.
+- User data remains on the device.
+
+## Debug Log Filters
+
+Useful filters while debugging:  
+```bash
 !EGL_emulation, !Choreographer, !RemoteInputConnectionImpl, !ImeTracker, !OpenGLRenderer, !TextInputPlugin, !InsetsController, !InputMethodManager
+```
 
-## helper commands
-- `adb pull /storage/emulated/0/Android/data/com.iiteens.placify/files/app.log ./app.log`
-- `adb pair IP_ADDRESS:PORT`
-- `adb connect IP_ADDRESS:PORT`
-- `flutter pub run flutter_launcher_icons`
+## Developer Utilities
+
+Helpful commands for development and debugging:
+
+```bash
+# Pull app logs
+adb pull /storage/emulated/0/Android/data/com.iiteens.placify/files/app.log ./app.log
+
+# Wireless debugging
+adb pair IP_ADDRESS:PORT
+adb connect IP_ADDRESS:PORT
+
+# Generate launcher icons
+flutter pub run flutter_launcher_icons
+```
